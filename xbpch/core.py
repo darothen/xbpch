@@ -9,6 +9,9 @@ import numpy as np
 import xarray as xr
 import warnings
 
+from dask import delayed
+import dask.array as da
+
 from xarray.core.pycompat import OrderedDict
 from xarray.core.variable import  Variable
 from xarray.backends.common import AbstractDataStore
@@ -20,7 +23,7 @@ from . grid import BASE_DIMENSIONS, CTMGrid
 from . util import cf
 from . util.diaginfo import get_diaginfo, get_tracerinfo
 
-DEFAULT_DTYPE = np.dtype('f4')
+DEFAULT_DTYPE = 'f4'
 
 
 class BPCHArrayWrapper(NDArrayMixin):
@@ -166,35 +169,27 @@ class BPCHDataStore(AbstractDataStore):
             raise ValueError("Invalid byte order (endian={})".format(endian))
         self.endian = endian
 
-        # Open a pointer to the file
-        # self._fp = FortranFile(self.filename, self.mode, self.endian)
-
-        opener = functools.partial(
-            BPCHFile, filename=filename,
-            mode=mode, endian=self.endian, memmap=memmap,
-            diaginfo_file=diaginfo_file, tracerinfo_file=tracerinfo_file,
-            maskandscale=maskandscale)
-
-        self.ds = opener()
-        self._opener = opener
-
+        # Open the raw output file, but don't yet read all the data
+        self._fp = BPCHFile(self.filename, self.mode, self.endian, eager=False)
         self.memmap = memmap
         self.fields = fields
         self.categories = categories
+
+        # Peek into the raw output file and read the header and metadata
+        # so that we can get a head start at building the output grid
+        self._fp._read_metadata()
+        self._fp._read_header()
 
         # Create storage dicts for variables and attributes, to be used later
         # when xarray needs to access the data
         self._variables = OrderedDict()
         self._attributes = OrderedDict()
-        self._attributes.update(self.ds._attributes)
+        self._attributes.update(self._fp._attributes)
         self._dimensions = [d for d in BASE_DIMENSIONS]
 
-        # Get the list of variables in the file and load all the data:
+        # Begin constructing the coordinate dimensions shared by the
+        # output dataset variables
         dim_coords = {}
-        self._times = self.ds.times
-        print(len(self._times))
-        self._time_bnds = self.ds.time_bnds
-        print(self._attributes)
         self.ctm_info = CTMGrid.from_model(
             self._attributes['modelname'], resolution=self._attributes['res']
         )
@@ -239,6 +234,9 @@ class BPCHDataStore(AbstractDataStore):
         # TODO: Fix longitudes if ctm_grid.center180
 
         # Time dimensions
+        # self._times = self.ds.times
+        # self._time_bnds = self.ds.time_bnds
+
         # TODO: Time units?
         self._variables['time'] = xr.Variable(
             ['time', ], self._times,
@@ -249,6 +247,8 @@ class BPCHDataStore(AbstractDataStore):
             {'units': cf.CTM_TIME_UNIT_STR}
         )
         self._variables['nv'] = xr.Variable(['nv', ], [0, 1])
+
+        # Instruct the file pointer to read all of its variable data.
 
         for vname, v in self.ds.variables.items():
             if fields and (v.attributes['name'] not in fields):
@@ -334,8 +334,7 @@ class BPCHDataStore(AbstractDataStore):
 
 
     def close(self):
-        # self._fp.close()
-        self.ds.close()
+        self._fp.close()
         for var in list(self._variables):
             del self._variables[var]
 
@@ -343,11 +342,94 @@ class BPCHDataStore(AbstractDataStore):
         self.close()
 
 
+class BPCHDataBundle(object):
+    """ A single slice of a single variable inside a bpch file, and all
+    of its critical accompanying metadata. """
+
+    __slots__ = ('_shape', 'dtype', 'endian', 'filename', 'file_position',
+                 'time', 'metadata', '_data', '_mmap', '_dask')
+
+    def __init__(self, shape,  endian, filename, file_position, time,
+                 metadata, dtype=None, use_mmap=False, dask_delayed=False):
+        self._shape = shape
+        self.dtype = dtype
+        self.endian = endian
+        self.filename = filename
+        self.file_position = file_position
+        self.time = time
+        self.metadata = metadata
+
+        if dtype is None:
+            self.dtype = np.dtype(self.endian + DEFAULT_DTYPE)
+        else:
+            self.dtype = dtype
+
+        self._data = None
+        self._mmap = use_mmap
+        self._dask = dask_delayed
+
+        @property
+        def shape(self):
+            return self._shape
+
+        @property
+        def ndim(self):
+            return len(self.shape)
+
+        @property
+        def array(self):
+            return self.data
+
+        @property
+        def data(self):
+            if self._data is None:
+                self._data = self._read()
+            return self._data
+
+        def _read(self):
+            if self._dask:
+                d = da.from_delayed(
+                    delayed(read_from_bpch)(
+                        self.filename, self.file_position, self.shape,
+                        self.dtype, self.endian, use_mmap=self._mmap
+                    )
+                )
+            else:
+                d = read_from_bpch(
+                        self.filename, self.file_position, self.shape,
+                        self.dtype, self.endian, use_mmap=self._mmap
+                )
+
+            return d
+
+def read_from_bpch(filename, file_position, shape, dtype, endian,
+                   use_mmap=False):
+    """ """
+    offset = file_position + 4
+    if use_mmap:
+        d = np.memmap(filename, dtype=dtype, mode='r', shape=shape,
+                      offset=offset, order='F')
+    else:
+        with FortranFile(filename, 'rb', endian) as ff:
+            ff.seek(file_position)
+            d = np.array(ff.readline('*f'))
+            d = d.reshape(shape, order='F')
+
+    # As a sanity check, *be sure* that the resulting data block has the
+    # correct shape, and fail early if it doesn't.
+    if (d.shape != shape):
+        raise IOError("Data chunk read from {} does not have the right shape,"
+                      " (expected {} but got {})"
+                      .format(filename, shape, d.shape))
+
+    return d
+
+
 class BPCHDataProxy(object):
     """A reference to the data payload of a single BPCH file datablock."""
 
-    # __slots__ = ('_shape', 'dtype', 'path', 'endian', 'file_position',
-    #              'scale_factor', 'fill_value', 'maskandscale', '_data')
+    __slots__ = ('_shape', 'dtype', 'path', 'endian', 'file_position',
+                 'scale_factor', 'fill_value', 'maskandscale', '_data')
 
     def __init__(self, shape, dtype, path, endian, file_position,
                  scale_factor, fill_value, maskandscale):
@@ -477,9 +559,9 @@ class BPCHVariable(BPCHDataProxy):
 class BPCHFile(object):
     """ A file object for BPCH data on disk """
 
-    def __init__(self, filename, mode='rb', endian='>', memmap=False,
-                 diaginfo_file='', tracerinfo_file='',
-                 maskandscale=False):
+    def __init__(self, filename, mode='rb', endian='>',
+                 diaginfo_file='', tracerinfo_file='', eager=False,
+                 use_mmap=False, dask_delayed=False):
 
         self.mode = mode
         if not mode.startswith('r'):
@@ -487,7 +569,6 @@ class BPCHFile(object):
 
         self.filename = filename
         self.fsize = os.path.getsize(self.filename)
-        self.use_mmap = memmap
         self.endian = endian
 
         # Open a pointer to the file
@@ -507,23 +588,28 @@ class BPCHFile(object):
                 diaginfo_file = ''
         self.diaginfo_file = diaginfo_file
 
+        # Container to record file metadata
+        self._attributes = OrderedDict()
+
         # Don't necessarily need to save diag/tracer_dict yet
         self.diaginfo_df, _ = get_diaginfo(self.diaginfo_file)
         self.tracerinfo_df, _ = get_tracerinfo(self.tracerinfo_file)
 
-        # self.dimensions = OrderedDict()
-        self.variables = OrderedDict()
-        self.times = []
-        self.time_bnds = []
-
-        self._attributes = OrderedDict()
+        # Container for bundles contained in the output file.
+        self.var_data = []
 
         # Critical information for accessing file contents
-        self.maskandscale = maskandscale
         self._header_pos = None
 
-        if mode.startswith('r'):
+        # Data loading strategy
+        self.use_mmap = use_mmap
+        self.dask_delayed = dask_delayed
+
+        # Control eager versus deferring reading
+        self.eager = eager
+        if (mode.startswith('r') and self.eager):
             self._read()
+
 
 
     def close(self):
@@ -532,8 +618,6 @@ class BPCHFile(object):
         import warnings
 
         if not self.fp.closed:
-            self.variables = OrderedDict()
-
             # if self._mm_buf is not None:
             #     ref = weakref.ref(self._mm_buf)
             #     self._mm_buf = None
@@ -555,8 +639,8 @@ class BPCHFile(object):
         self.close()
 
     def _read(self):
-        """ Parse the file on disk and set up easy access to meta-
-        and data blocks """
+        """ Parse the entire bpch file on disk and set up easy access to meta-
+        and data blocks. """
 
         self._read_metadata()
         self._read_header()
@@ -564,7 +648,8 @@ class BPCHFile(object):
 
 
     def _read_metadata(self):
-        """ Read the main metadata packaged within a bpch file """
+        """ Read the main metadata packaged within a bpch file, indicating
+        the output filetype and its title. """
 
         filetype = self.fp.readline().strip()
         filetitle = self.fp.readline().strip()
@@ -574,6 +659,8 @@ class BPCHFile(object):
 
 
     def _read_header(self, all_info=False):
+        """ Process the header information for a bpch file, which includes
+        the data model name and the grid resolution / specifications. """
 
         self._header_pos = self.fp.tell()
 
@@ -598,7 +685,6 @@ class BPCHFile(object):
 
         var_bundles = OrderedDict()
         var_attrs = OrderedDict()
-        _times = []
 
         n_vars = 0
 
@@ -673,42 +759,41 @@ class BPCHFile(object):
             origin = (dim3, dim4, dim5)
             var_attr['origin'] = origin
 
-            pos = self.fp.tell()
+            timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
 
-            # Map or read the data
-            if self.use_mmap:
-                dtype = np.dtype(self.endian + 'f4')
-                offset = pos + 4
-                data = np.memmap(self.filename, mode='r',
-                                 shape=data_shape,
-                                 dtype=dtype, offset=offset, order='F')
-                # print(len(data), data_shape, np.product(data_shape))
-                # data.shape = data_shape
-                self.fp.skipline()
-            else:
-                self.fp.seek(pos)
-                data = np.array(self.fp.readline('*f'))
-                # data = data.reshape(data_shape, order='F')
-                data.shape = data_shape
+
+            pos = self.fp.tell()
+            # Note that we don't bass a dtype, and assume everything is
+            # single-fp floats with the correct endian, as hard-coded
+            var_bundle = BPCHDataBundle(
+                data_shape, self.endian, self.filename, pos, [timelo, timehi],
+                metadata=var_attr,
+                use_mmap=self.use_mmap, dask_delayed=self.dask_delayed
+            )
+
             # Save the data as a "bundle" for concatenating in the final step
             if fullname in var_bundles:
-                var_bundles[fullname].append(data)
+                var_bundles[fullname].append(var_bundle)
             else:
-                var_bundles[fullname] = [data, ]
+                var_bundles[fullname] = [var_bundle, ]
                 var_attrs[fullname] = var_attr
                 n_vars += 1
 
-            timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
-            _times.append((timelo, timehi))
+        self.var_data = var_bundles
 
-        # Copy over the data we've recorded
-        self.time_bnds[:] = _times[::n_vars]
-        self.times = [t[0] for t in _times[::n_vars]]
+            # timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
+            # _times.append((timelo, timehi))
 
-        for fullname, bundle in var_bundles.items():
-            var_attr = var_attrs[fullname]
-            self.variables[fullname] = BPCHVariable(
-                bundle, data_shape, np.dtype('f'), self.filename, self.endian,
-                file_position=None, scale_factor=var_attr['scale'],
-                fill_value=np.nan, maskandscale=False, attributes=var_attr
-            )
+        # # Copy over the data we've recorded
+        # self.time_bnds[:] = _times[::n_vars]
+        # self.times = [t[0] for t in _times[::n_vars]]
+        #
+        # for fullname, bundle in var_bundles.items():
+        #     var_attr = var_attrs[fullname]
+        #     self.variables[fullname] =
+        #
+        #         BPCHDataProxy(
+        #         bundle, data_shape, np.dtype('f'), self.filename, self.endian,
+        #         file_position=None, scale_factor=var_attr['scale'],
+        #         fill_value=np.nan, maskandscale=False, attributes=var_attr
+        #     )
