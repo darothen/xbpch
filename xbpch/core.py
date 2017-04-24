@@ -22,7 +22,7 @@ from . util import cf
 def open_bpchdataset(filename, fields=[], categories=[],
                      tracerinfo_file='tracerinfo.dat',
                      diaginfo_file='diaginfo.dat',
-                     endian=">",
+                     endian=">", fix_cf=True,
                      memmap=True, dask=True, return_store=False):
     """ Open a GEOS-Chem BPCH file output as an xarray Dataset.
 
@@ -44,6 +44,8 @@ def open_bpchdataset(filename, fields=[], categories=[],
         substantially improve read performance.
     endian : {'=', '>', '<'}, optional
         Endianness of file on disk. By default, "big endian" (">") is assumed.
+    fix_cf : bool
+        Enforce CF conventions for variable names, units, and other metadata
     default_dtype : numpy.dtype, optional
         Default datatype for variables encoded in file on disk (single-precision
         float by default).
@@ -73,8 +75,25 @@ def open_bpchdataset(filename, fields=[], categories=[],
         diaginfo_file=diaginfo_file, endian=endian,
         use_mmap=memmap, dask_delayed=dask
     )
-
     ds = xr.Dataset.load_store(store)
+
+    # Handle CF corrections
+    if fix_cf:
+        rename_dict = {}
+        for v in ds:
+            attrs = ds[v].attrs
+            if 'unit' in attrs:
+                unit = attrs['unit']
+                attrs['unit'] = cf.get_cfcompliant_units(unit)
+            cf_name = cf.get_valid_varname(v)
+            rename_dict[v] = cf_name
+        ds.rename(rename_dict, inplace=True)
+
+        # TODO: There's a bug with xr.decode_cf which eagerly loads data.
+        #       Re-enable this once that bug is fixed
+        # Note that we do not need to decode the times because we explicitly
+        # kept track of them as we parsed the data.
+        # ds = xr.decode_cf(ds, decode_times=False)
 
     # Set attributes for CF conventions
     ds.attrs.update(dict(
@@ -267,17 +286,6 @@ class BPCHDataStore(AbstractDataStore):
             # Here, we mean it only as one sample in the dataset.
             # if dshape[0] == 1:
             #     del dims[0]
-
-            # If requested, try to coerce the attributes and metadata to
-            # something a bit more CF-friendly
-            lookup_name = vname
-            if fix_cf:
-                if 'unit' in var_attr:
-                    cf_units = cf.get_cfcompliant_units(
-                        var_attr['unit']
-                    )
-                    var_attr['unit'] = cf_units
-                vname = cf.get_valid_varname(vname)
 
             # TODO: Explore using a wrapper with an NDArrayMixin; if you don't do this, then dask won't work correctly (it won't promote the data to an array from a BPCHDataProxy). I'm not sure why.
             # data = BPCHVariableWrapper(lookup_name, self)
