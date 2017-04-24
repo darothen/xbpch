@@ -629,6 +629,9 @@ class BPCHFile(object):
             #             "all of variables/arrays referencing its data are "
             #             "copied and/or cleaned", category=RuntimeWarning)
             # self._mm = None
+            for v in list(self.var_data):
+                del self.var_data[v]
+                
             self.fp.close()
     # __del__ = close
 
@@ -770,6 +773,7 @@ class BPCHFile(object):
                 metadata=var_attr,
                 use_mmap=self.use_mmap, dask_delayed=self.dask_delayed
             )
+            self.fp.skipline()
 
             # Save the data as a "bundle" for concatenating in the final step
             if fullname in var_bundles:
