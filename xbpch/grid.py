@@ -299,10 +299,6 @@ class CTMGrid(object):
                                  " data is missing (esig, csig)")
             Ap = Cp = Ptop
 
-        print("Ap", Ap)
-        print("Bp", Bp)
-        print("Psurf", Psurf)
-        print("Cp", Cp)
         Pe = Ap + Bp * (Psurf - Cp)
         Pc = 0.5 * (Pe[0:-1] + Pe[1:])
 

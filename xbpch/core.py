@@ -80,8 +80,8 @@ class BPCHDataProxyWrapper(NDArrayMixin):
 def open_bpchdataset(filename, fields=[], categories=[],
                      tracerinfo_file='tracerinfo.dat',
                      diaginfo_file='diaginfo.dat',
-                     endian=">", default_dtype=DEFAULT_DTYPE,
-                     memmap=True, use_dask=True, return_store=False):
+                     endian=">",
+                     memmap=True, dask=True, return_store=False):
     """ Open a GEOS-Chem BPCH file output as an xarray Dataset.
 
     Parameters
@@ -117,7 +117,8 @@ def open_bpchdataset(filename, fields=[], categories=[],
     store = BPCHDataStore(
         filename, fields=fields, categories=categories,
         tracerinfo_file=tracerinfo_file,
-        diaginfo_file=diaginfo_file, endian=endian, memmap=memmap
+        diaginfo_file=diaginfo_file, endian=endian,
+        use_mmap=memmap, dask_delayed=dask
     )
 
     ds = xr.Dataset.load_store(store)
@@ -138,10 +139,10 @@ class BPCHDataStore(AbstractDataStore):
 
     """
 
-    def __init__(self, filename, fields=[], categories=[],
-                 mode='r', endian='>', memmap=True,
+    def __init__(self, filename, fields=[], categories=[], fix_cf=False,
+                 mode='r', endian='>',
                  diaginfo_file='', tracerinfo_file='',
-                 maskandscale=False, fix_cf=False):
+                 use_mmap=False, dask_delayed=False):
 
         # Track the metadata accompanying this dataset.
         dir_path = os.path.abspath(os.path.dirname(filename))
@@ -170,21 +171,26 @@ class BPCHDataStore(AbstractDataStore):
         self.endian = endian
 
         # Open the raw output file, but don't yet read all the data
-        self._fp = BPCHFile(self.filename, self.mode, self.endian, eager=False)
-        self.memmap = memmap
+        self._mmap = use_mmap
+        self._dask = dask_delayed
+        self._bpch = BPCHFile(self.filename, self.mode, self.endian,
+                              tracerinfo_file=tracerinfo_file,
+                              diaginfo_file=diaginfo_file,
+                              eager=False, use_mmap=self._mmap,
+                              dask_delayed=self._dask)
         self.fields = fields
         self.categories = categories
 
         # Peek into the raw output file and read the header and metadata
         # so that we can get a head start at building the output grid
-        self._fp._read_metadata()
-        self._fp._read_header()
+        self._bpch._read_metadata()
+        self._bpch._read_header()
 
         # Create storage dicts for variables and attributes, to be used later
         # when xarray needs to access the data
         self._variables = OrderedDict()
         self._attributes = OrderedDict()
-        self._attributes.update(self._fp._attributes)
+        self._attributes.update(self._bpch._attributes)
         self._dimensions = [d for d in BASE_DIMENSIONS]
 
         # Begin constructing the coordinate dimensions shared by the
@@ -206,6 +212,20 @@ class BPCHDataStore(AbstractDataStore):
         )
         eta_centers = self.ctm_info.eta_centers
         sigma_centers = self.ctm_info.sigma_centers
+
+        # Add time dimensions
+        self._dimensions.append(
+            dict(dims=['time', ], attrs={'axis': 'T', 'long_name': 'time',
+                                         'standard_name': 'time'})
+        )
+
+        # Add lat/lon dimensions
+        self._dimensions.append(
+            dict(dims=['lon', ], attrs={'axis': 'X', 'long_name': 'longitude'})
+        )
+        self._dimensions.append(
+            dict(dims=['lat', ], attrs={'axis': 'y', 'long_name': 'latitude'})
+        )
 
         if eta_centers is not None:
             lev_vals = eta_centers
@@ -233,42 +253,31 @@ class BPCHDataStore(AbstractDataStore):
         )
         # TODO: Fix longitudes if ctm_grid.center180
 
-        # Time dimensions
-        # self._times = self.ds.times
-        # self._time_bnds = self.ds.time_bnds
 
-        # TODO: Time units?
-        self._variables['time'] = xr.Variable(
-            ['time', ], self._times,
-            {'bounds': 'time_bnds', 'units': cf.CTM_TIME_UNIT_STR}
-        )
-        self._variables['time_bnds'] = xr.Variable(
-            ['time', 'nv'], self._time_bnds,
-            {'units': cf.CTM_TIME_UNIT_STR}
-        )
-        self._variables['nv'] = xr.Variable(['nv', ], [0, 1])
+        # Parse the binary file and prepare to add variables to the DataStore
+        self._bpch._read_var_data()
+        for vname in list(self._bpch.var_data.keys()):
 
-        # Instruct the file pointer to read all of its variable data.
+            var_data = self._bpch.var_data[vname]
+            var_attr = self._bpch.var_attrs[vname]
 
-        for vname, v in self.ds.variables.items():
-            if fields and (v.attributes['name'] not in fields):
+            if fields and (var_attr['name'] not in fields):
                 continue
-            if categories and (v.attributes['category '] not in categories):
+            if categories and (var_attr['category'] not in categories):
                 continue
-            print("*** GOLDEN")
 
             # Process dimensions
             dims = ['time', 'lon', 'lat', ]
-            dshape = v.shape
-            if len(dshape) > 3:
+            dshape = var_attr['original_shape']
+            if len(dshape) == 3:
                 # Process the vertical coordinate. A few things can happen here:
                 # 1) We have cell-centered values on the "Nlayer" grid; we can take these variables and map them to 'lev'
                 # 2) We have edge value on an "Nlayer" + 1 grid; we can take these and use them with 'lev_edge'
                 # 3) We have troposphere values on "Ntrop"; we can take these and use them with 'lev_trop', but we won't have coordinate information yet
                 # All other cases we do not handle yet; this includes the aircraft emissions and a few other things. Note that tracer sources do not have a vertical coord to worry about!
                 nlev = dshape[-1]
-                grid_nlev = self.CTMGrid.Nlayers
-                grid_ntrop = self.CTMGrid.Ntrop
+                grid_nlev = self.ctm_info.Nlayers
+                grid_ntrop = self.ctm_info.Ntrop
                 try:
                     if nlev == grid_nlev:
                         dims.append('lev')
@@ -282,25 +291,33 @@ class BPCHDataStore(AbstractDataStore):
                     warnings.warn("Couldn't resolve grid_spec vertical layout")
                     continue
 
+            # xarray Variables are thin wrappers for numpy.ndarrays, or really
+            # any object that extends the ndarray interface. A critical part of
+            # the original ndarray interface is that the underlying data has to
+            # be contiguous in memory. We can enforce this to happen by
+            # concatenating each bundle in the variable data bundles we read
+            # from the bpch file
+            data = self._concat([v.data for v in var_data])
+
             # Is the variable time-invariant? If it is, kill the time dim.
             # Here, we mean it only as one sample in the dataset.
-            if dshape[0] == 1:
-                del dims[0]
+            # if dshape[0] == 1:
+            #     del dims[0]
 
             # If requested, try to coerce the attributes and metadata to
             # something a bit more CF-friendly
             lookup_name = vname
             if fix_cf:
-                if 'units' in v.attributes:
+                if 'unit' in var_attr:
                     cf_units = cf.get_cfcompliant_units(
-                        v.attributes['units']
+                        var_attr['unit']
                     )
-                    v.attributes['units'] = cf_units
+                    var_attr['unit'] = cf_units
                 vname = cf.get_valid_varname(vname)
 
             # TODO: Explore using a wrapper with an NDArrayMixin; if you don't do this, then dask won't work correctly (it won't promote the data to an array from a BPCHDataProxy). I'm not sure why.
-            data = BPCHVariableWrapper(lookup_name, self)
-            var = xr.Variable(dims, data, v.attributes)
+            # data = BPCHVariableWrapper(lookup_name, self)
+            var = xr.Variable(dims, data, var_attr)
 
             # Shuffle dims for CF/COARDS compliance if requested
             # TODO: For this to work, we have to force a load of the data.
@@ -314,6 +331,22 @@ class BPCHDataStore(AbstractDataStore):
 
             self._variables[vname] = var
 
+            # Try to add a time dimension
+            # TODO: Time units?
+            if (len(var_data) > 1) and 'time' not in self._variables:
+                time_bnds = np.asarray([v.time for v in var_data])
+                times = time_bnds[:, 0]
+
+                self._variables['time'] = xr.Variable(
+                    ['time', ], times,
+                    {'bounds': 'time_bnds', 'units': cf.CTM_TIME_UNIT_STR}
+                )
+                self._variables['time_bnds'] = xr.Variable(
+                    ['time', 'nv'], time_bnds,
+                    {'units': cf.CTM_TIME_UNIT_STR}
+                )
+                self._variables['nv'] = xr.Variable(['nv', ], [0, 1])
+
         # Create the dimension variables; we have a lot of options
         # here with regards to the vertical coordinate. For now,
         # we'll just use the sigma or eta coordinates.
@@ -322,6 +355,16 @@ class BPCHDataStore(AbstractDataStore):
         # self._variables['Bp'] =
         # self._variables['altitude'] =
 
+        # Time dimensions
+        # self._times = self.ds.times
+        # self._time_bnds = self.ds.time_bnds
+
+
+    def _concat(self, *args, **kwargs):
+        if self._dask:
+            return da.concatenate(*args, **kwargs)
+        else:
+            return np.concatenate(*args, **kwargs)
 
     def get_variables(self):
         return self._variables
@@ -334,7 +377,7 @@ class BPCHDataStore(AbstractDataStore):
 
 
     def close(self):
-        self._fp.close()
+        self._bpch.close()
         for var in list(self._variables):
             del self._variables[var]
 
@@ -368,39 +411,40 @@ class BPCHDataBundle(object):
         self._mmap = use_mmap
         self._dask = dask_delayed
 
-        @property
-        def shape(self):
-            return self._shape
+    @property
+    def shape(self):
+        return self._shape
 
-        @property
-        def ndim(self):
-            return len(self.shape)
+    @property
+    def ndim(self):
+        return len(self.shape)
 
-        @property
-        def array(self):
-            return self.data
+    @property
+    def array(self):
+        return self.data
 
-        @property
-        def data(self):
-            if self._data is None:
-                self._data = self._read()
-            return self._data
+    @property
+    def data(self):
+        if self._data is None:
+            self._data = self._read()
+        return self._data
 
-        def _read(self):
-            if self._dask:
-                d = da.from_delayed(
-                    delayed(read_from_bpch)(
-                        self.filename, self.file_position, self.shape,
-                        self.dtype, self.endian, use_mmap=self._mmap
-                    )
-                )
-            else:
-                d = read_from_bpch(
-                        self.filename, self.file_position, self.shape,
-                        self.dtype, self.endian, use_mmap=self._mmap
-                )
+    def _read(self):
+        if self._dask:
+            d = da.from_delayed(
+                delayed(read_from_bpch, )(
+                    self.filename, self.file_position, self.shape,
+                    self.dtype, self.endian, use_mmap=self._mmap
+                ),
+                self.shape, self.dtype
+            )
+        else:
+            d = read_from_bpch(
+                    self.filename, self.file_position, self.shape,
+                    self.dtype, self.endian, use_mmap=self._mmap
+            )
 
-            return d
+        return d
 
 def read_from_bpch(filename, file_position, shape, dtype, endian,
                    use_mmap=False):
@@ -597,6 +641,7 @@ class BPCHFile(object):
 
         # Container for bundles contained in the output file.
         self.var_data = []
+        self.var_attrs = []
 
         # Critical information for accessing file contents
         self._header_pos = None
@@ -631,7 +676,7 @@ class BPCHFile(object):
             # self._mm = None
             for v in list(self.var_data):
                 del self.var_data[v]
-                
+
             self.fp.close()
     # __del__ = close
 
@@ -741,7 +786,6 @@ class BPCHFile(object):
                 if not unit.strip():  # unit may be empty in bpch
                     unit = diag_attr['unit']  # but not in tracerinfo
                 var_attr.update(diag_attr)
-
             except:
                 diag = {'name': '', 'scale': 1}
                 var_attr.update(diag)
@@ -757,13 +801,13 @@ class BPCHFile(object):
                 data_shape = (dim0, dim1)         # 2D field
             else:
                 data_shape = (dim0, dim1, dim2)
+            var_attr['original_shape'] = data_shape
             # Add proxy time dimension to shape
             data_shape = tuple([1, ] + list(data_shape))
             origin = (dim3, dim4, dim5)
             var_attr['origin'] = origin
 
             timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
-
 
             pos = self.fp.tell()
             # Note that we don't bass a dtype, and assume everything is
@@ -784,20 +828,4 @@ class BPCHFile(object):
                 n_vars += 1
 
         self.var_data = var_bundles
-
-            # timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
-            # _times.append((timelo, timehi))
-
-        # # Copy over the data we've recorded
-        # self.time_bnds[:] = _times[::n_vars]
-        # self.times = [t[0] for t in _times[::n_vars]]
-        #
-        # for fullname, bundle in var_bundles.items():
-        #     var_attr = var_attrs[fullname]
-        #     self.variables[fullname] =
-        #
-        #         BPCHDataProxy(
-        #         bundle, data_shape, np.dtype('f'), self.filename, self.endian,
-        #         file_position=None, scale_factor=var_attr['scale'],
-        #         fill_value=np.nan, maskandscale=False, attributes=var_attr
-        #     )
+        self.var_attrs = var_attrs
