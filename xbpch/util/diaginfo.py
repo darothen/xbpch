@@ -102,6 +102,8 @@ def get_tracerinfo(tracerinfo_file):
             row['molwt'] = C_MOLECULAR_WEIGHT
         else:
             row['hydrocarbon'] = False
+        return row
+
     tracer_df = (
         tracer_df
             .apply(_assign_hydrocarbon, axis=1)

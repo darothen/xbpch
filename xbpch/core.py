@@ -16,7 +16,7 @@ from xarray.core.utils import Frozen, FrozenOrderedDict, NDArrayMixin
 from xarray.core import indexing
 
 from . uff import FortranFile
-from . grid import BASE_DIMENSIONS, get_grid_spec, get_layers, get_lonlat
+from . grid import BASE_DIMENSIONS, CTMGrid
 from . util import cf
 from . util.diaginfo import get_diaginfo, get_tracerinfo
 
@@ -163,7 +163,16 @@ class BPCHDataStore(AbstractDataStore):
         self.endian = endian
 
         # Open a pointer to the file
-        self._fp = FortranFile(self.filename, self.mode, self.endian)
+        # self._fp = FortranFile(self.filename, self.mode, self.endian)
+
+        opener = functools.partial(
+            BPCHFile, filename=filename,
+            mode=mode, endian=self.endian, memmap=memmap,
+            diaginfo_file=diaginfo_file, tracerinfo_file=tracerinfo_file,
+            maskandscale=maskandscale)
+
+        self.ds = opener()
+        self._opener = opener
 
         self.memmap = memmap
         self.fields = fields
@@ -182,7 +191,9 @@ class BPCHDataStore(AbstractDataStore):
         print(len(self._times))
         self._time_bnds = self.ds.time_bnds
         print(self._attributes)
-        self.grid_spec = get_grid_spec(self._attributes['modelname'])
+        self.ctm_info = CTMGrid.from_model(
+            self._attributes['modelname'], resolution=self._attributes['res']
+        )
 
         # Add vertical dimensions
         self._dimensions.append(
@@ -198,8 +209,9 @@ class BPCHDataStore(AbstractDataStore):
         for vname, v in self.ds.variables.items():
             if fields and (v.attributes['name'] not in fields):
                 continue
-            if categories and (v.attributes['category ']not in categories):
+            if categories and (v.attributes['category '] not in categories):
                 continue
+            print("*** GOLDEN")
 
             # Process dimensions
             dims = ['time', 'lon', 'lat', ]
@@ -211,8 +223,8 @@ class BPCHDataStore(AbstractDataStore):
                 # 3) We have troposphere values on "Ntrop"; we can take these and use them with 'lev_trop', but we won't have coordinate information yet
                 # All other cases we do not handle yet; this includes the aircraft emissions and a few other things. Note that tracer sources do not have a vertical coord to worry about!
                 nlev = dshape[-1]
-                grid_nlev = self.grid_spec['Nlayers']
-                grid_ntrop = self.grid_spec['Ntrop']
+                grid_nlev = self.CTMGrid.Nlayers
+                grid_ntrop = self.CTMGrid.Ntrop
                 try:
                     if nlev == grid_nlev:
                         dims.append('lev')
@@ -246,6 +258,8 @@ class BPCHDataStore(AbstractDataStore):
             data = BPCHVariableWrapper(lookup_name, self)
             var = xr.Variable(dims, data, v.attributes)
 
+            print(var)
+
             # Shuffle dims for CF/COARDS compliance if requested
             # TODO: For this to work, we have to force a load of the data.
             #       Is there a way to re-write BPCHDataProxy so that that's not
@@ -267,10 +281,9 @@ class BPCHDataStore(AbstractDataStore):
         # self._variables['altitude'] =
 
         ## Vertical grid
+        eta_centers = self.ctm_info.eta_centers
+        sigma_centers = self.ctm_info.sigma_centers
 
-        grid_layers = get_layers(self.grid_spec)
-        eta_centers = grid_layers['eta_centers']
-        sigma_centers = grid_layers['sigma_centers']
         if eta_centers is not None:
             lev_vals = eta_centers
             lev_attrs = {
@@ -286,19 +299,16 @@ class BPCHDataStore(AbstractDataStore):
         self._variables['lev'] = xr.Variable(['lev', ], lev_vals, lev_attrs)
 
         ## Latitude / Longitude
-        rlon, rlat = self.grid_spec['resolution']
-        grid_lonlat = get_lonlat(rlon, rlat, self.grid_spec['halfpolar'],
-                                 self.grid_spec['center180'])
-
         # TODO: Add lon/lat bounds
         self._variables['lon'] = xr.Variable(
-            ['lon'], grid_lonlat['lon_centers'],
+            ['lon'], self.ctm_info.lon_centers,
             {'long_name': 'longitude', 'units': 'degrees_east'}
         )
         self._variables['lat'] = xr.Variable(
-            ['lat'], grid_lonlat['lat_centers'],
+            ['lat'], self.ctm_info.lat_centers,
             {'long_name': 'latitude', 'units': 'degrees_north'}
         )
+        print(self._variables['lon'])
         # TODO: Fix longitudes if ctm_grid.center180
 
         # Time dimensions
@@ -324,7 +334,8 @@ class BPCHDataStore(AbstractDataStore):
 
 
     def close(self):
-        self._fp.close()
+        # self._fp.close()
+        self.ds.close()
         for var in list(self._variables):
             del self._variables[var]
 
@@ -495,8 +506,10 @@ class BPCHFile(object):
             if not os.path.exists(diaginfo_file):
                 diaginfo_file = ''
         self.diaginfo_file = diaginfo_file
-        self.diaginfo_df = get_diaginfo(self.diaginfo_file)
-        self.tracerinfo_df = get_tracerinfo(self.tracerinfo_file)
+
+        # Don't necessarily need to save diag/tracer_dict yet
+        self.diaginfo_df, _ = get_diaginfo(self.diaginfo_file)
+        self.tracerinfo_df, _ = get_tracerinfo(self.tracerinfo_file)
 
         # self.dimensions = OrderedDict()
         self.variables = OrderedDict()
@@ -612,28 +625,28 @@ class BPCHFile(object):
                 cat_df = self.diaginfo_df[
                     self.diaginfo_df.name == category_name.strip()
                 ]
-                if len(cat_df > 1):
-                    raise ValueError(
-                        "More than one category matching {} found in "
-                        "diaginfo.dat".format(
-                            category_name.strip()
-                        )
-                    )
+                # if len(cat_df > 1):
+                #     raise ValueError(
+                #         "More than one category matching {} found in "
+                #         "diaginfo.dat".format(
+                #             category_name.strip()
+                #         )
+                #     )
                 # Safe now to select the only row in the DataFrame
-                cat = cat_df.iloc[0]
+                cat = cat_df.T.squeeze()
                 cat_attr = cat.to_dict()
 
                 tracer_num = int(cat.offset) + int(number)
                 diag_df = self.tracerinfo_df[
-                    self.tracerinfo_df.number == tracer_num
+                    self.tracerinfo_df.tracer == tracer_num
                 ]
-                if len(diag_df > 1):
-                    raise ValueError(
-                        "More than one tracer matching {:d} found in "
-                        "tracerinfo.dat".format(tracer_num)
-                    )
+                # if len(diag_df > 1):
+                #     raise ValueError(
+                #         "More than one tracer matching {:d} found in "
+                #         "tracerinfo.dat".format(tracer_num)
+                #     )
                 # Safe now to select only row in the DataFrame
-                diag = diag_df.iloc[0]
+                diag = diag_df.T.squeeze()
                 diag_attr = diag.to_dict()
 
                 if not unit.strip():  # unit may be empty in bpch
@@ -649,7 +662,6 @@ class BPCHFile(object):
 
             vname = diag['name']
             fullname = category_name.strip() + "_" + vname
-            # print(fullname)
 
             # parse metadata, get data or set a data proxy
             if dim2 == 1:
