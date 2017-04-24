@@ -48,7 +48,7 @@ After a few seconds (depending on your hard-drive speed) you should be able to i
 
 ## Caveats and Future Notes
 
-**xbpch** should be most simple workflows, especially if you need a quick-and-dirty way to ingest legacy GEOS-Chem output. It is **not** tested against the majority of output grids, including data for the Hg model or nested models. Grid information (at least for the vertical) is hard-coded and may not be accurate for the most recent versions of GEOS-Chem.
+**xbpch** should work for most simple workflows, especially if you need a quick-and-dirty way to ingest legacy GEOS-Chem output. It is **not** tested against the majority of output grids, including data for the Hg model or nested models. Grid information (at least for the vertical) is hard-coded and may not be accurate for the most recent versions of GEOS-Chem.
 
 Most importantly, **xbpch** does not yet solve the problem of manually scanning bpch files before producing a dataset on disk. Because the bpch format does not encode metadata about *what its contents actually are*, we must manually process this from any output file we wish to load. For the time being, we do **not** short-circuit this process because we cannot necessarily predict file position offsets in the bpch files we read. In the future, I hope to come up with an elegant solution for solving this problem.
 
