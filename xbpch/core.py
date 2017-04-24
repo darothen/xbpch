@@ -3,7 +3,6 @@ Plumbing for enabling BPCH file I/O through xarray.
 """
 from __future__ import print_function, division
 
-import functools
 import os
 import numpy as np
 import xarray as xr
@@ -13,9 +12,8 @@ from dask import delayed
 import dask.array as da
 
 from xarray.core.pycompat import OrderedDict
-from xarray.core.variable import  Variable
 from xarray.backends.common import AbstractDataStore
-from xarray.core.utils import Frozen, FrozenOrderedDict, NDArrayMixin
+from xarray.core.utils import Frozen, NDArrayMixin
 from xarray.core import indexing
 
 from . uff import FortranFile
@@ -24,57 +22,6 @@ from . util import cf
 from . util.diaginfo import get_diaginfo, get_tracerinfo
 
 DEFAULT_DTYPE = 'f4'
-
-
-class BPCHArrayWrapper(NDArrayMixin):
-    pass
-
-
-class BPCHVariableWrapper(indexing.NumpyIndexingAdapter):
-
-    def __init__(self, variable_name, datastore):
-        self.datastore = datastore
-        self.variable_name = variable_name
-
-    @property
-    def array(self):
-        return self.datastore.ds.variables[self.variable_name].data
-
-    @property
-    def dtype(self):
-        return np.dtype(self.array.dtype.kind + str(self.array.dtype.itemsize))
-
-    def __getitem__(self, key):
-        data = super(BPCHVariableWrapper, self).__getitem__(key)
-        copy = self.datastore.memmap
-        data = np.array(data, dtype=self.dtype, copy=copy)
-        return data
-
-
-class BPCHDataProxyWrapper(NDArrayMixin):
-    # Mostly following the template of ScipyArrayWrapper
-    # https://github.com/pydata/xarray/blob/master/xarray/backends/scipy_.py
-    # and NioArrayWrapper
-    # https://github.com/pydata/xarray/blob/master/xarray/backends/pynio_.py
-
-    def __init__(self, array):
-        self._array = array
-
-    @property
-    def array(self):
-        data = self._array.data
-        print(type(data))
-        return data
-
-    @property
-    def dtype(self):
-        return self._array.dtype
-
-    def __getitem__(self, key):
-        print(key)
-        if key == () and self.ndim == 0:
-            return self.array.get_value()
-        return self.array[key]
 
 
 def open_bpchdataset(filename, fields=[], categories=[],
@@ -105,12 +52,23 @@ def open_bpchdataset(filename, fields=[], categories=[],
     default_dtype : numpy.dtype, optional
         Default datatype for variables encoded in file on disk (single-precision
         float by default).
+    memmap : bool
+        Flag indicating that data should be memory-mapped from disk instead of
+        eagerly loaded into memory
+    dask : bool
+        Flag indicating that data reading should be deferred (delayed) to
+        construct a task-graph for later execution
+    return_store : bool
+        Also return the underlying DataStore to the user
 
     Returns
     -------
     ds : xarray.Dataset
         Dataset containing the requested fields (or the entire file), with data
         contained in proxy containers for access later.
+    store : xarray.AbstractDataStore
+        Underlying DataStore which handles the loading and processing of
+        bpch files on disk
 
     """
 
@@ -122,6 +80,17 @@ def open_bpchdataset(filename, fields=[], categories=[],
     )
 
     ds = xr.Dataset.load_store(store)
+
+    # Set attributes for CF conventions
+    ds.attrs.update(dict(
+        Conventions='CF1.6',
+        source=filename,
+        tracerinfo=tracerinfo_file,
+        diaginfo=diaginfo_file,
+        # TODO: Add a history line indicated when the file was opened
+        filetype=store._bpch.filetype,
+        filetitle=store._bpch.filetitle,
+    ))
 
     # To immediately load the data from the BPCHDataProxy paylods, need
     # to execute ds.data_vars for some reason...
@@ -430,6 +399,7 @@ class BPCHDataBundle(object):
         return self._data
 
     def _read(self):
+        """ Helper function to load the data referenced by this bundle. """
         if self._dask:
             d = da.from_delayed(
                 delayed(read_from_bpch, )(
@@ -446,9 +416,35 @@ class BPCHDataBundle(object):
 
         return d
 
+
 def read_from_bpch(filename, file_position, shape, dtype, endian,
                    use_mmap=False):
-    """ """
+    """ Read a chunk of data from a bpch output file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to file on disk containing the  data
+    file_position : int
+        Position (bytes) where desired data chunk begins
+    shape : tuple of ints
+        Resultant (n-dimensional) shape of requested data; the chunk
+        will be read sequentially from disk and then re-shaped
+    dtype : dtype
+        Dtype of data; for best results, pass a dtype which includes
+        an endian indicator, e.g. `dtype = np.dtype('>f4')`
+    endian : str
+        Endianness of data; should be consistent with `dtype`
+    use_mmap : bool
+        Memory map the chunk of data to the file on disk, else read
+        immediately
+
+    Returns
+    -------
+    Array with shpae `shape` and dtype `dtype` containing the requested
+    chunk of data from `filename`.
+
+    """
     offset = file_position + 4
     if use_mmap:
         d = np.memmap(filename, dtype=dtype, mode='r', shape=shape,
@@ -467,137 +463,6 @@ def read_from_bpch(filename, file_position, shape, dtype, endian,
                       .format(filename, shape, d.shape))
 
     return d
-
-
-class BPCHDataProxy(object):
-    """A reference to the data payload of a single BPCH file datablock."""
-
-    __slots__ = ('_shape', 'dtype', 'path', 'endian', 'file_position',
-                 'scale_factor', 'fill_value', 'maskandscale', '_data')
-
-    def __init__(self, shape, dtype, path, endian, file_position,
-                 scale_factor, fill_value, maskandscale):
-        self._shape = shape
-        self.dtype = dtype
-        self.path = path
-        self.fill_value = fill_value
-        self.endian = endian
-        self.file_position = file_position
-        self.scale_factor = scale_factor
-        self.maskandscale = maskandscale
-        self._data = None
-
-    def _maybe_mask_and_scale(self, arr):
-        if self.maskandscale and (self.scale_factor is not None):
-            arr = self.scale_factor * arr
-        return arr
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    @property
-    def data(self):
-        if self._data is None:
-            self._data = self.load()
-        return self._data
-
-    def array(self):
-        return self.data
-
-    def load(self):
-        with FortranFile(self.path, 'rb', self.endian) as bpch_file:
-            pos = self.file_position
-            bpch_file.seek(pos)
-            data = np.array(bpch_file.readline('*f'))
-            data = data.reshape(self._shape, order='F')
-        if self.maskandscale and (self.scale_factor is not None):
-            data = data * self.scale_factor
-        return data
-
-    def __getitem__(self, keys):
-        return self.data[keys]
-
-    def __repr__(self):
-        fmt = '<{self.__class__.__name__} shape={self.shape}' \
-              ' dtype={self.dtype!r} path={self.path!r}' \
-              ' file_position={self.file_position}' \
-              ' scale_factor={self.scale_factor}>'
-        return fmt.format(self=self)
-
-    def __getstate__(self):
-        return {attr: getattr(self, attr) for attr in self.__slots__}
-
-    def __setstate__(self, state):
-        for key, value in list(state.items()):
-            setattr(self, key, value)
-
-
-class BPCHVariable(BPCHDataProxy):
-
-    def __init__(self, data_pieces, *args, attributes=None,
-                 **kwargs):
-        self._data_pieces = data_pieces
-        super(BPCHVariable, self).__init__(*args, **kwargs)
-
-        if attributes is not None:
-            self._attributes = attributes
-        else:
-            self._attributes = OrderedDict()
-        for k, v in self._attributes.items():
-            self.__dict__[k] = v
-
-    def load(self):
-        warnings.warn("'load' disabled on bpch_variable.")
-        pass
-
-    @property
-    def shape(self):
-        shape_copy = list(self._shape)
-        shape_copy[0] = len(self._data_pieces)
-        return tuple(shape_copy)
-
-    @property
-    def chunks(self):
-        return len(self._data_pieces)
-
-    @property
-    def data(self):
-        arr = np.concatenate(self._data_pieces, axis=0).view(self.dtype)
-        return self._maybe_mask_and_scale(arr)
-
-    @property
-    def attributes(self):
-        return self._attributes
-
-    def __setattr__(self, key, value):
-        try:
-            self._attribute[key] = value
-        except AttributeError:
-            pass
-        self.__dict__[key] = value
-
-    def __str__(self):
-        pass
-
-    def __repr__(self):
-        return """
-          <{self.__class__.__name__}
-          shape={self.shape} (chunks={self.chunks})
-           dtype={self.dtype!r} scale_factor={self.scale_factor}>
-        """.format(self=self)
-
-    def __getitem__(self, index):
-        if self.chunks == 1:
-            arr = self._data_pieces[0][index]
-        else:
-            pass
-
-        return self._maybe_mask_and_scale(arr)
 
 
 class BPCHFile(object):
@@ -659,26 +524,12 @@ class BPCHFile(object):
 
     def close(self):
         """ Close this bpch file. """
-        import weakref
-        import warnings
 
         if not self.fp.closed:
-            # if self._mm_buf is not None:
-            #     ref = weakref.ref(self._mm_buf)
-            #     self._mm_buf = None
-            #     if ref() is None:
-            #         self._mm.close()
-            #     else:
-            #         warnings.warn(
-            #             "Can't close bpch_file opened with memory mapping until "
-            #             "all of variables/arrays referencing its data are "
-            #             "copied and/or cleaned", category=RuntimeWarning)
-            # self._mm = None
             for v in list(self.var_data):
                 del self.var_data[v]
 
             self.fp.close()
-    # __del__ = close
 
     def __enter__(self):
         return self
@@ -715,7 +566,7 @@ class BPCHFile(object):
         line = self.fp.readline('20sffii')
         modelname, res0, res1, halfpolar, center180 = line
         self._attributes.update({
-            "modelname":str(modelname, 'utf-8').strip(),
+            "modelname": str(modelname, 'utf-8').strip(),
             "halfpolar": halfpolar,
             "center180": center180,
             "res": (res0, res1)
@@ -730,6 +581,9 @@ class BPCHFile(object):
 
 
     def _read_var_data(self):
+        """ Iterate over the block of this bpch file and return handlers
+        in the form of `BPCHDataBundle`s for access to the data contained
+        therein. """
 
         var_bundles = OrderedDict()
         var_attrs = OrderedDict()
@@ -759,6 +613,8 @@ class BPCHFile(object):
                 cat_df = self.diaginfo_df[
                     self.diaginfo_df.name == category_name.strip()
                 ]
+                # TODO: Safer logic for handling case where more than one
+                #       tracer metadata match was made
                 # if len(cat_df > 1):
                 #     raise ValueError(
                 #         "More than one category matching {} found in "
@@ -768,12 +624,13 @@ class BPCHFile(object):
                 #     )
                 # Safe now to select the only row in the DataFrame
                 cat = cat_df.T.squeeze()
-                cat_attr = cat.to_dict()
 
                 tracer_num = int(cat.offset) + int(number)
                 diag_df = self.tracerinfo_df[
                     self.tracerinfo_df.tracer == tracer_num
                 ]
+                # TODO: Safer logic for handling case where more than one
+                #       tracer metadata match was made
                 # if len(diag_df > 1):
                 #     raise ValueError(
                 #         "More than one tracer matching {:d} found in "
@@ -789,8 +646,6 @@ class BPCHFile(object):
             except:
                 diag = {'name': '', 'scale': 1}
                 var_attr.update(diag)
-                diag_attr = {}
-                cat_attr = {}
             var_attr['unit'] = unit
 
             vname = diag['name']
@@ -802,6 +657,7 @@ class BPCHFile(object):
             else:
                 data_shape = (dim0, dim1, dim2)
             var_attr['original_shape'] = data_shape
+
             # Add proxy time dimension to shape
             data_shape = tuple([1, ] + list(data_shape))
             origin = (dim3, dim4, dim5)
@@ -810,7 +666,7 @@ class BPCHFile(object):
             timelo, timehi = cf.tau2time(tau0), cf.tau2time(tau1)
 
             pos = self.fp.tell()
-            # Note that we don't bass a dtype, and assume everything is
+            # Note that we don't pass a dtype, and assume everything is
             # single-fp floats with the correct endian, as hard-coded
             var_bundle = BPCHDataBundle(
                 data_shape, self.endian, self.filename, pos, [timelo, timehi],
