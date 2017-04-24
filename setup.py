@@ -35,7 +35,7 @@ MAJOR = 0
 MINOR = 2
 MICRO = 0
 VERSION = "{}.{}.{}".format(MAJOR, MINOR, MICRO)
-DEV = True
+DEV = False
 
 # Correct versioning with git info if DEV
 if DEV:
