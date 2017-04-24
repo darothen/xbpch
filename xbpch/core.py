@@ -374,8 +374,9 @@ class BPCHDataStore(AbstractDataStore):
 
             # Is the variable time-invariant? If it is, kill the time dim.
             # Here, we mean it only as one sample in the dataset.
-            # if dshape[0] == 1:
-            #     del dims[0]
+            if data.shape[0] == 1:
+                dims = dims[1:]
+                data = data.squeeze()
 
             # Create a variable containing this data
             var = xr.Variable(dims, data, var_attr)
