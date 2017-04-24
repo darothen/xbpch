@@ -128,7 +128,12 @@ def open_bpchdataset(filename, fields=[], categories=[],
 
 
 class BPCHDataStore(AbstractDataStore):
-    """ Store for reading data via pygchem.io.bpch_file. """
+    """ Store for reading data from binary punch files.
+
+    Note that this is intended as a backend only; to open and read a given
+    bpch file, use :meth:`open_bpchdataset`.
+
+    """
 
     def __init__(self, filename, fields=[], categories=[],
                  mode='r', endian='>', memmap=True,
@@ -159,7 +164,6 @@ class BPCHDataStore(AbstractDataStore):
         # Check endianness flag
         if endian not in ['>', '<', '=']:
             raise ValueError("Invalid byte order (endian={})".format(endian))
-        pass
         self.endian = endian
 
         # Open a pointer to the file
@@ -205,6 +209,46 @@ class BPCHDataStore(AbstractDataStore):
         self._dimensions.append(
             dict(dims=['lev_edge', ], attrs={'axis': 'Z'})
         )
+        eta_centers = self.ctm_info.eta_centers
+        sigma_centers = self.ctm_info.sigma_centers
+
+        if eta_centers is not None:
+            lev_vals = eta_centers
+            lev_attrs = {
+                'standard_name': 'atmosphere_hybrid_sigma_pressure_coordinate',
+                'axis': 'Z'
+            }
+        else:
+            lev_vals = sigma_centers
+            lev_attrs = {
+                'standard_name': 'atmosphere_hybrid_sigma_pressure_coordinate',
+                'axis': 'Z'
+            }
+        self._variables['lev'] = xr.Variable(['lev', ], lev_vals, lev_attrs)
+
+        ## Latitude / Longitude
+        # TODO: Add lon/lat bounds
+        self._variables['lon'] = xr.Variable(
+            ['lon'], self.ctm_info.lon_centers,
+            {'long_name': 'longitude', 'units': 'degrees_east'}
+        )
+        self._variables['lat'] = xr.Variable(
+            ['lat'], self.ctm_info.lat_centers,
+            {'long_name': 'latitude', 'units': 'degrees_north'}
+        )
+        # TODO: Fix longitudes if ctm_grid.center180
+
+        # Time dimensions
+        # TODO: Time units?
+        self._variables['time'] = xr.Variable(
+            ['time', ], self._times,
+            {'bounds': 'time_bnds', 'units': cf.CTM_TIME_UNIT_STR}
+        )
+        self._variables['time_bnds'] = xr.Variable(
+            ['time', 'nv'], self._time_bnds,
+            {'units': cf.CTM_TIME_UNIT_STR}
+        )
+        self._variables['nv'] = xr.Variable(['nv', ], [0, 1])
 
         for vname, v in self.ds.variables.items():
             if fields and (v.attributes['name'] not in fields):
@@ -258,8 +302,6 @@ class BPCHDataStore(AbstractDataStore):
             data = BPCHVariableWrapper(lookup_name, self)
             var = xr.Variable(dims, data, v.attributes)
 
-            print(var)
-
             # Shuffle dims for CF/COARDS compliance if requested
             # TODO: For this to work, we have to force a load of the data.
             #       Is there a way to re-write BPCHDataProxy so that that's not
@@ -280,48 +322,6 @@ class BPCHDataStore(AbstractDataStore):
         # self._variables['Bp'] =
         # self._variables['altitude'] =
 
-        ## Vertical grid
-        eta_centers = self.ctm_info.eta_centers
-        sigma_centers = self.ctm_info.sigma_centers
-
-        if eta_centers is not None:
-            lev_vals = eta_centers
-            lev_attrs = {
-                'standard_name': 'atmosphere_hybrid_sigma_pressure_coordinate',
-                'axis': 'Z'
-            }
-        else:
-            lev_vals = sigma_centers
-            lev_attrs = {
-                'standard_name': 'atmosphere_hybrid_sigma_pressure_coordinate',
-                'axis': 'Z'
-            }
-        self._variables['lev'] = xr.Variable(['lev', ], lev_vals, lev_attrs)
-
-        ## Latitude / Longitude
-        # TODO: Add lon/lat bounds
-        self._variables['lon'] = xr.Variable(
-            ['lon'], self.ctm_info.lon_centers,
-            {'long_name': 'longitude', 'units': 'degrees_east'}
-        )
-        self._variables['lat'] = xr.Variable(
-            ['lat'], self.ctm_info.lat_centers,
-            {'long_name': 'latitude', 'units': 'degrees_north'}
-        )
-        print(self._variables['lon'])
-        # TODO: Fix longitudes if ctm_grid.center180
-
-        # Time dimensions
-        # TODO: Time units?
-        self._variables['time'] = xr.Variable(
-            ['time', ], self._times,
-            {'bounds': 'time_bnds', 'units': cf.CTM_TIME_UNIT_STR}
-        )
-        self._variables['time_bnds'] = xr.Variable(
-            ['time', 'nv'], self._time_bnds,
-            {'units': cf.CTM_TIME_UNIT_STR}
-        )
-        self._variables['nv'] = xr.Variable(['nv', ], [0, 1])
 
     def get_variables(self):
         return self._variables
