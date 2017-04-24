@@ -24,7 +24,8 @@ class BPCHDataBundle(object):
                  'time', 'metadata', '_data', '_mmap', '_dask')
 
     def __init__(self, shape,  endian, filename, file_position, time,
-                 metadata, dtype=None, use_mmap=False, dask_delayed=False):
+                 metadata, data=None, dtype=None,
+                 use_mmap=False, dask_delayed=False):
         self._shape = shape
         self.dtype = dtype
         self.endian = endian
@@ -38,7 +39,10 @@ class BPCHDataBundle(object):
         else:
             self.dtype = dtype
 
-        self._data = None
+        # Note that data is initially prescribed as None, but we keep a hook
+        # here so that we can inject payloads at load time, if we want
+        # (for instance, to avoid reading/memmapping through a file)
+        self._data = data
         self._mmap = use_mmap
         self._dask = dask_delayed
 

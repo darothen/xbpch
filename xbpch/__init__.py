@@ -4,4 +4,4 @@ try:
 except:
     pass
 
-from . core import open_bpchdataset
+from . core import open_bpchdataset, open_mfbpchdataset

@@ -1,8 +1,13 @@
 """
-Plumbing for enabling BPCH file I/O through xarray.
+Plumbing for enabling BPCH file I/O through xarray
+
+Examples of other extensions using the core DataStore API can be found at:
+- https://github.com/pydata/xarray/blob/master/xarray/conventions.py
+- https://github.com/xgcm/xmitgcm/blob/master/xmitgcm/mds_store.py
 """
 from __future__ import print_function, division
 
+from glob import glob
 import os
 import numpy as np
 import xarray as xr
@@ -10,7 +15,7 @@ import warnings
 
 import dask.array as da
 
-from xarray.core.pycompat import OrderedDict
+from xarray.core.pycompat import OrderedDict, basestring
 from xarray.backends.common import AbstractDataStore
 from xarray.core.utils import Frozen
 
@@ -76,6 +81,9 @@ def open_bpchdataset(filename, fields=[], categories=[],
         use_mmap=memmap, dask_delayed=dask
     )
     ds = xr.Dataset.load_store(store)
+    # Record what the file object underlying the store which we culled this
+    # Dataset from is so that we can clean it up later
+    ds._file_obj = store._bpch
 
     # Handle CF corrections
     if fix_cf:
@@ -112,6 +120,52 @@ def open_bpchdataset(filename, fields=[], categories=[],
         return ds, store
     else:
         return ds
+
+
+def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
+                       preprocess=None, lock=None, **kwargs):
+    """ Open multiple bpch files as a single dataset.
+
+    Note - you *must* have dask installed for this to work, as this greatly
+    simplifies issues relating to multi-file I/O.
+
+    Parameters
+    ----------
+
+
+    """
+    from xarray.backends.api import _MultiFileCloser
+
+    # TODO: Include file locks?
+
+    # Check for dask
+    dask = kwargs.pop('dask', False)
+    if not dask:
+        raise ValueError("Reading multiple files without dask is not supported")
+    kwargs['dask'] = True
+
+    # Add th
+
+    if isinstance(paths, basestring):
+        paths = sorted(glob(paths))
+    if not paths:
+        raise IOError("No paths to files were passed into open_mfbpchdataset")
+
+    datasets = [open_bpchdataset(filename, **kwargs)
+                for filename in paths]
+    bpch_objs = [ds._file_obj for ds in datasets]
+
+    if preprocess is not None:
+        datasets = [preprocess(ds) for ds in datasets]
+
+    # Concatenate over time
+    combined = xr.auto_combine(datasets, compat=compat, concat_dim=concat_dim)
+
+    combined._file_obj = _MultiFileCloser(bpch_objs)
+    # TODO: Add history statement denoting concatenation of bpch files
+    combined.attrs = datasets[0].attrs
+
+    return combined
 
 
 class BPCHDataStore(AbstractDataStore):
@@ -287,8 +341,7 @@ class BPCHDataStore(AbstractDataStore):
             # if dshape[0] == 1:
             #     del dims[0]
 
-            # TODO: Explore using a wrapper with an NDArrayMixin; if you don't do this, then dask won't work correctly (it won't promote the data to an array from a BPCHDataProxy). I'm not sure why.
-            # data = BPCHVariableWrapper(lookup_name, self)
+            # Create a variable containing this data
             var = xr.Variable(dims, data, var_attr)
 
             # Shuffle dims for CF/COARDS compliance if requested
@@ -346,7 +399,6 @@ class BPCHDataStore(AbstractDataStore):
 
     def get_dimensions(self):
         return Frozen(self._dimensions)
-
 
     def close(self):
         self._bpch.close()
