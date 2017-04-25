@@ -23,6 +23,13 @@ conda_ can be obtained as part of the Anaconda_ Python distribution
 from Continuum IO, although you do not need all of the packages it
 provides in order to use **xbpch**.
 
+
+Installation via conda
+----------------------
+
+A conda_ package is not yet available for **xbpch**, but will be soon.
+
+
 Installation via pip
 --------------------
 
