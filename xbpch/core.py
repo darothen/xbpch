@@ -5,6 +5,7 @@ Examples of other extensions using the core DataStore API can be found at:
 - https://github.com/pydata/xarray/blob/master/xarray/conventions.py
 - https://github.com/xgcm/xmitgcm/blob/master/xmitgcm/mds_store.py
 """
+# TODO: Mask and scale datasets based on units/metadata
 from __future__ import print_function, division
 
 from glob import glob
@@ -27,7 +28,7 @@ from . util import cf
 def open_bpchdataset(filename, fields=[], categories=[],
                      tracerinfo_file='tracerinfo.dat',
                      diaginfo_file='diaginfo.dat',
-                     endian=">", fix_cf=True,
+                     endian=">", decode_cf=True,
                      memmap=True, dask=True, return_store=False):
     """ Open a GEOS-Chem BPCH file output as an xarray Dataset.
 
@@ -49,7 +50,7 @@ def open_bpchdataset(filename, fields=[], categories=[],
         substantially improve read performance.
     endian : {'=', '>', '<'}, optional
         Endianness of file on disk. By default, "big endian" (">") is assumed.
-    fix_cf : bool
+    decode_cf : bool
         Enforce CF conventions for variable names, units, and other metadata
     default_dtype : numpy.dtype, optional
         Default datatype for variables encoded in file on disk (single-precision
@@ -86,16 +87,17 @@ def open_bpchdataset(filename, fields=[], categories=[],
     ds._file_obj = store._bpch
 
     # Handle CF corrections
-    if fix_cf:
+    if decode_cf:
+        decoded_vars = OrderedDict()
         rename_dict = {}
         for v in ds:
-            attrs = ds[v].attrs
-            if 'unit' in attrs:
-                unit = attrs['unit']
-                attrs['unit'] = cf.get_cfcompliant_units(unit)
             cf_name = cf.get_valid_varname(v)
             rename_dict[v] = cf_name
-        ds.rename(rename_dict, inplace=True)
+            new_var = cf.enforce_cf_variable(ds[v])
+            decoded_vars[cf_name] = new_var
+        ds = xr.Dataset(decoded_vars, attrs=ds.attrs.copy())
+
+        # ds.rename(rename_dict, inplace=True)
 
         # TODO: There's a bug with xr.decode_cf which eagerly loads data.
         #       Re-enable this once that bug is fixed
@@ -294,10 +296,16 @@ class BPCHDataStore(AbstractDataStore):
 
         # Add lat/lon dimensions
         self._dimensions.append(
-            dict(dims=['lon', ], attrs={'axis': 'X', 'long_name': 'longitude'})
+            dict(dims=['lon', ], attrs={
+                'axis': 'X', 'long_name': 'longitude coordinate',
+                'standard_name': 'longitude'
+            })
         )
         self._dimensions.append(
-            dict(dims=['lat', ], attrs={'axis': 'y', 'long_name': 'latitude'})
+            dict(dims=['lat', ], attrs={
+                'axis': 'y', 'long_name': 'latitude coordinate',
+                'standard_name': 'latitude'
+            })
         )
 
         if eta_centers is not None:
