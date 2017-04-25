@@ -16,6 +16,9 @@ to out-of-core and parallel processing of GEOS-Chem_ output.
 
     installation
     quick_start
+    usage
+    reading
+
 
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org

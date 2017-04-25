@@ -1,9 +1,6 @@
 """
-Plumbing for enabling BPCH file I/O through xarray
+API for reading BPCH files via xarray
 
-Examples of other extensions using the core DataStore API can be found at:
-- https://github.com/pydata/xarray/blob/master/xarray/conventions.py
-- https://github.com/xgcm/xmitgcm/blob/master/xmitgcm/mds_store.py
 """
 from __future__ import print_function, division
 
@@ -149,7 +146,7 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
     paths : list of strs
         Filenames to load; order doesn't matter as they will be
         lexicographically sorted before we read in the data
-    conat_dim : str, default='time'
+    concat_dim : str, default='time'
         Dimension to concatenate Datasets over. We default to "time" since this
         is how GEOS-Chem splits output files
     compat : {'identical', 'equals', 'broadcast_equals',
@@ -174,9 +171,10 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
         and so this is not actually used. However, it is likely necessary
         before dask's multi-threaded backend can be used
     **kwargs : optional
-        Additional arguments to pass to :py:func:`xbpch.open_dataset`.
+        Additional arguments to pass to :py:func:`xbpch.open_bpchdataset`.
 
     """
+
     from xarray.backends.api import _MultiFileCloser
 
     # TODO: Include file locks?
@@ -222,6 +220,11 @@ class BPCHDataStore(AbstractDataStore):
 
     Note that this is intended as a backend only; to open and read a given
     bpch file, use :meth:`open_bpchdataset`.
+
+    Examples of other extensions using the core DataStore API can be found at:
+
+    - https://github.com/pydata/xarray/blob/master/xarray/conventions.py
+    - https://github.com/xgcm/xmitgcm/blob/master/xmitgcm/mds_store.py
 
     """
 

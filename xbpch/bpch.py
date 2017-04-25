@@ -1,5 +1,6 @@
 """
 Utility classes and tools for handling data contained in bpch files
+
 """
 
 from dask import delayed
@@ -176,7 +177,9 @@ class BPCHFile(object):
 
 
     def close(self):
-        """ Close this bpch file. """
+        """ Close this bpch file.
+
+        """
 
         if not self.fp.closed:
             for v in list(self.var_data):
@@ -192,7 +195,9 @@ class BPCHFile(object):
 
     def _read(self):
         """ Parse the entire bpch file on disk and set up easy access to meta-
-        and data blocks. """
+        and data blocks.
+
+        """
 
         self._read_metadata()
         self._read_header()
@@ -201,7 +206,9 @@ class BPCHFile(object):
 
     def _read_metadata(self):
         """ Read the main metadata packaged within a bpch file, indicating
-        the output filetype and its title. """
+        the output filetype and its title.
+
+        """
 
         filetype = self.fp.readline().strip()
         filetitle = self.fp.readline().strip()
@@ -212,7 +219,9 @@ class BPCHFile(object):
 
     def _read_header(self, all_info=False):
         """ Process the header information for a bpch file, which includes
-        the data model name and the grid resolution / specifications. """
+        the data model name and the grid resolution / specifications.
+
+        """
 
         self._header_pos = self.fp.tell()
 
@@ -236,7 +245,9 @@ class BPCHFile(object):
     def _read_var_data(self):
         """ Iterate over the block of this bpch file and return handlers
         in the form of `BPCHDataBundle`s for access to the data contained
-        therein. """
+        therein.
+
+        """
 
         var_bundles = OrderedDict()
         var_attrs = OrderedDict()
