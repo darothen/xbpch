@@ -20,9 +20,11 @@ from xarray.core.pycompat import OrderedDict, basestring
 from xarray.backends.common import AbstractDataStore
 from xarray.core.utils import Frozen
 
-from . bpch import BPCHFile, read_from_bpch
+from . bpch import BPCHFile
+from . common import get_timestamp
 from . grid import BASE_DIMENSIONS, CTMGrid
 from . util import cf
+from . version import __version__ as ver
 
 
 def open_bpchdataset(filename, fields=[], categories=[],
@@ -106,6 +108,7 @@ def open_bpchdataset(filename, fields=[], categories=[],
         # ds = xr.decode_cf(ds, decode_times=False)
 
     # Set attributes for CF conventions
+    ts = get_timestamp()
     ds.attrs.update(dict(
         Conventions='CF1.6',
         source=filename,
@@ -114,6 +117,10 @@ def open_bpchdataset(filename, fields=[], categories=[],
         # TODO: Add a history line indicated when the file was opened
         filetype=store._bpch.filetype,
         filetitle=store._bpch.filetitle,
+        history=(
+            "{}: Processed/loaded by xbpch-{} from {}"
+            .format(ts, ver, filename)
+        ),
     ))
 
     # To immediately load the data from the BPCHDataProxy paylods, need
