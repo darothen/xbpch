@@ -19,28 +19,28 @@ Requirements
 
 **xbpch** is only intended for use with Python 3, although with some
 modifications it  would likely work with Python 2.7 (`Pull Requests are
-welcome! <https://github.com/darothen/xbpch/pulls>`). As the package
+welcome! <https://github.com/darothen/xbpch/pulls>`_). As the package
 description implies, it requires up-to-date copies of xarray_
 (>= version 0.9) and [dask] (>= version 0.14). The best way to install
 these packages is by using the conda_ package management system, or
 the `Anaconda Python distribution <https://www.continuum.io/downloads>`_.
 
 To install the dependencies for **xbpch** using conda, execute from a
-terminal:
+terminal::
 
     conda install xarray dask
 
 In the future, **xbpch** will be available on both pip and and conda,
 but for now it must be installed directly from source. To do this, you
-can either clone the source directory and install:
+can either clone the source directory and install::
 
-    git clone https://github.com/darothen/xbpch.git
-    cd xbpch
-    python setup.py install
+    $ git clone https://github.com/darothen/xbpch.git
+    $ cd xbpch
+    $ python setup.py install
 
-or, you can install via pip directly from git:
+or, you can install via pip directly from git::
 
-    pip install git+https://github.com/darothen/xbpch.git
+    $ pip install git+https://github.com/darothen/xbpch.git
 
 Quick Start
 -----------
