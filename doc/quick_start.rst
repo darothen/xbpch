@@ -68,6 +68,37 @@ You can do this with the ``open_bpchdataset()`` method:
 You can then proceed to process the data using the conventional routines
 you'd use in any xarray_-powered workflow.
 
+In the sample dataset highlighted here, the 14 days of hourly output are
+split across 14 files - one for each day's worth of data. **xbpch**
+provides a second method, ``open_mfbpchdataset()``, for reading in
+multiple-file datasets like these, and automatically concatenating them
+on the *time* record dimension:
+
+.. ipython::
+    :verbatim:
+
+    In [1]: import xbpch
+
+    In [1]: from glob import glob
+
+    In [2]: fns = glob("ND49_*.bpch")
+
+    In [2]: def _preprocess(ds):
+    ......:     return ds[['IJ_AVG_S_O3', ]].mean(['lon', 'lat'])
+
+    In [3]: ds = xbpch.open_mfbpchdataset(
+    ......:     fns, preprocess=_preprocess, dask=True, memmap=True
+    ......: )
+
+    In [4]: print(ds)
+    Out[4]: <xarray.Dataset>
+    Dimensions:      (time: 336)
+    Coordinates:
+      * time         (time) datetime64[ns] 2006-01-01T01:00:00 ...
+    Data variables:
+        IJ_AVG_S_O3  (time) float32 2.5524e-08 2.55541e-08 2.55588e-08 ...
+
+
 .. _GEOS-Chem: http://www.geos-chem.org
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
