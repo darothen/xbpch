@@ -5,7 +5,6 @@ Examples of other extensions using the core DataStore API can be found at:
 - https://github.com/pydata/xarray/blob/master/xarray/conventions.py
 - https://github.com/xgcm/xmitgcm/blob/master/xmitgcm/mds_store.py
 """
-# TODO: Mask and scale datasets based on units/metadata
 from __future__ import print_function, division
 
 from glob import glob
@@ -114,7 +113,6 @@ def open_bpchdataset(filename, fields=[], categories=[],
         source=filename,
         tracerinfo=tracerinfo_file,
         diaginfo=diaginfo_file,
-        # TODO: Add a history line indicated when the file was opened
         filetype=store._bpch.filetype,
         filetitle=store._bpch.filetitle,
         history=(
@@ -207,8 +205,14 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
     combined = xr.auto_combine(datasets, compat=compat, concat_dim=concat_dim)
 
     combined._file_obj = _MultiFileCloser(bpch_objs)
-    # TODO: Add history statement denoting concatenation of bpch files
     combined.attrs = datasets[0].attrs
+    ts = get_timestamp()
+    fns_str = " ".join(paths)
+    combined.attrs['history'] = (
+        "{}: Processed/loaded by xbpch-{} from {}"
+        .format(ts, ver, fns_str)
+    )
+
 
     return combined
 
