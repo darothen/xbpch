@@ -2,13 +2,13 @@ xbpch: xarray interface for bpch files
 ======================================
 
 **xpbch** is a simple utility for reading the proprietary
-`binary punch format (bpch) outputs <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_Output_Files#Binary_Punch_File_Format)>` used in versions
+`binary punch format (bpch) outputs <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_Output_Files#Binary_Punch_File_Format)>`_ used in versions
 of GEOS-Chem_ earlier than v11-02. The utility allows a user to load this
 data into an xarray_- and dask_-powered workflow without necessarily
 pre-processing the data using GAMAP_ or IDL.
 
 This package is maintained as part of a broader, community effort to
-tackle `big data problems in geoscience <https://pangeo-data.github.io/)>`.
+tackle `big data problems in geoscience <https://pangeo-data.github.io/)>`_.
 
 
 Installation
@@ -23,24 +23,24 @@ welcome! <https://github.com/darothen/xbpch/pulls>`). As the package
 description implies, it requires up-to-date copies of xarray_
 (>= version 0.9) and [dask] (>= version 0.14). The best way to install
 these packages is by using the conda_ package management system, or
-the `Anaconda Python distribution <https://www.continuum.io/downloads>`.
+the `Anaconda Python distribution <https://www.continuum.io/downloads>`_.
 
 To install the dependencies for **xbpch** using conda, execute from a
 terminal:
 
-    $ conda install xarray dask
+    conda install xarray dask
 
 In the future, **xbpch** will be available on both pip and and conda,
 but for now it must be installed directly from source. To do this, you
 can either clone the source directory and install:
 
-    $ git clone https://github.com/darothen/xbpch.git
-    $ cd xbpch
-    $ python setup.py install
+    git clone https://github.com/darothen/xbpch.git
+    cd xbpch
+    python setup.py install
 
 or, you can install via pip directly from git:
 
-    $ pip install git+https://github.com/darothen/xbpch.git
+    pip install git+https://github.com/darothen/xbpch.git
 
 Quick Start
 -----------
@@ -51,7 +51,7 @@ directory on disk which contains your ``.bpch`` output, as well as
 ``tracerinfo.dat`` and ``diaginfo.dat``, and execute from a Python
 interpeter:
 
-:: code-block:: python
+.. code:: python
 
     from xbpch import open_bpchdataset
     fn = "my_geos_chem_output.bpch"
@@ -88,10 +88,10 @@ have been floating around the Python-GEOS-Chem community. In particular,
 I would like to acknowledge the following pieces of software which I have
 built this utility around:
 
-- `PyGChem <https://github.com/benbovy/PyGChem>` by
-  `Benoit Bovy <https://github.com/benbovy>`
-- `gchem <https://github.com/gkuhl/gchem>` by
-  `Gerrit Kuhlmann <https://github.com/gkuhl>`
+- `PyGChem <https://github.com/benbovy/PyGChem>`_ by
+  `Benoit Bovy <https://github.com/benbovy>`_
+- `gchem <https://github.com/gkuhl/gchem>`_ by
+  `Gerrit Kuhlmann <https://github.com/gkuhl>`_
 
 License
 -------
