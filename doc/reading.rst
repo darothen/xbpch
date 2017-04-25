@@ -9,10 +9,11 @@ provided in case you would prefer manually processing the bpch contents.
 
 See :doc:`/usage` for more details.
 
-.. automodule:: xbpch.core
-    :members: open_bpchdataset, open_mfbpchdataset
+.. autofunction:: xbpch.open_bpchdataset
 
-.. autoclass:: xbpch.bpch.BPCHFile
+.. autofunction:: xbpch.open_mfbpchdataset
+
+.. autoclass:: xbpch.BPCHFile
     :members:
     :private-members:
     :special-members:
