@@ -28,7 +28,7 @@ the `Anaconda Python distribution <https://www.continuum.io/downloads>`_.
 To install the dependencies for **xbpch** using conda, execute from a
 terminal::
 
-    conda install xarray dask
+    $ conda install xarray dask
 
 In the future, **xbpch** will be available on both pip and and conda,
 but for now it must be installed directly from source. To do this, you
