@@ -84,11 +84,46 @@ class BPCHDataBundle(object):
 
 
 class BPCHFile(object):
-    """ A file object for BPCH data on disk """
+    """ A file object for representing BPCH data on disk
+
+    Attributes
+    ----------
+    fp : FortranFile
+        A pointer to the open unformatted Fortran binary output (the original
+        bpch file)
+    var_data, var_attrs : dict
+        Containers of ``BPCHDataBundle``s and dicts, respectively, holding
+        the accessor functions to the raw bpch data and their associated
+        metadata
+
+    """
 
     def __init__(self, filename, mode='rb', endian='>',
                  diaginfo_file='', tracerinfo_file='', eager=False,
                  use_mmap=False, dask_delayed=False):
+        """ Load a BPCHFile
+
+        Parameters
+        ----------
+        filename : str
+            Path to the bpch file on disk
+        mode : str
+            Mode string to pass to the file opener; this is currently fixed to
+            "rb" and all other values will be rejected
+        endian : str {">", "<", ":"}
+            Endian-ness of the Fortran output file
+        {tracerinfo, diaginfo}_file : str
+            Path to the tracerinfo.dat and diaginfo.dat files containing
+            metadata pertaining to the output in the bpch file being read.
+        eager : bool
+            Flag to immediately read variable data; if "False", then nothing
+            will be read from the file and you'll need to do so manually
+        use_mmap : bool
+            Use memory-mapping to read data from file
+        dask_delayed : bool
+            Use dask to create delayed references to the data-reading functions
+
+        """
 
         self.mode = mode
         if not mode.startswith('r'):
@@ -123,8 +158,8 @@ class BPCHFile(object):
         self.tracerinfo_df, _ = get_tracerinfo(self.tracerinfo_file)
 
         # Container for bundles contained in the output file.
-        self.var_data = []
-        self.var_attrs = []
+        self.var_data = {}
+        self.var_attrs = {}
 
         # Critical information for accessing file contents
         self._header_pos = None
@@ -329,7 +364,7 @@ def read_from_bpch(filename, file_position, shape, dtype, endian,
 
     Returns
     -------
-    Array with shpae `shape` and dtype `dtype` containing the requested
+    Array with shape `shape` and dtype `dtype` containing the requested
     chunk of data from `filename`.
 
     """
