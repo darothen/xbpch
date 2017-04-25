@@ -95,6 +95,12 @@ built this utility around:
 - `gchem <https://github.com/gkuhl/gchem>`_ by
   `Gerrit Kuhlmann <https://github.com/gkuhl>`_
 
+Furthermore, the strategies used to load and process binary output on disk
+through xarray_\'s ``DataStore`` API is heavily inspired by `Ryan
+Abernathey's <https://github.com/rabernat>`_ package `xmitgcm
+<https://github.com/rabernat/xmitgcm>`_. 
+
+  
 License
 -------
 
