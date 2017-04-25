@@ -2,6 +2,8 @@
 xbpch
 =====
 
+|rtd|
+
 **xpbch** is a simple utility for reading the proprietary
 `binary punch format (bpch) outputs <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_Output_Files#Binary_Punch_File_Format>`_
 used in versions of GEOS-Chem_ earlier than v11-02. The utility
@@ -30,3 +32,7 @@ I acknowledge important contributions from Benoît Bovy,
 Gerrit Kuhlmann, and Christoph Keller.
 
 .. _licensed: http://github.com/darothen/xbpch/master/LICENSE
+
+.. |rtd| image:: https://readthedocs.org/projects/xbpch/badge/?version=latest
+   :target: http://xbpch.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
