@@ -1,9 +1,13 @@
 name: xbpch-docs
+channels:
+  - conda-forge
+  - defaults
 dependencies:
   - python=3.5
   - dask>=0.14
   - xarray>=0.9
   - ipython
   - future
+  - matplotlib
   - numpydoc
   - sphinx
