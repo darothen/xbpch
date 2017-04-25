@@ -1,8 +1,9 @@
-name: xbpch
+name: xbpch-docs
 dependencies:
   - python=3.5
   - dask>=0.14
   - xarray>=0.9
+  - ipython
   - future
   - numpydoc
   - sphinx
