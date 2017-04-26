@@ -1,3 +1,5 @@
+.. _quick start:
+
 Quick Start
 ===========
 
@@ -17,19 +19,20 @@ You should now see 14 ``bpch`` files in your directory, and two ``.dat`` files.
 
 The whole point of **xbpch** is to read these data files natively into an
 `xarray.Dataset <http://xarray.pydata.org/en/stable/data-structures.html#dataset>`_.
-You can do this with the ``open_bpchdataset()`` method:
+You can do this with the :py:func:`xbpch.open_bpchdataset` method:
 
-.. ipython::
+.. ipython:: python
     :verbatim:
 
-    In [1]: import xbpch
+    import xbpch
+    fn = "ND49_20060102_ref_e2006_m2010.bpch"
+    ds = xbpch.open_bpchdataset(fn)
 
-    In [2]: fn = "ND49_20060102_ref_e2006_m2010.bpch"
+If we print the dataset back out, we'll get a familiar representation:
 
-    In [3]: ds = xbpch.open_bpchdataset(fn)
+.. parsed-literal::
 
-    In [4]: print(ds)
-    Out [4]: <xarray.Dataset>
+    <xarray.Dataset>
     Dimensions:          (lat: 91, lev: 47, lon: 144, nv: 2, time: 24)
     Coordinates:
       * lev              (lev) float64 0.9925 0.9775 0.9624 0.9473 0.9322 0.9171 ...
@@ -70,28 +73,29 @@ you'd use in any xarray_-powered workflow.
 
 In the sample dataset highlighted here, the 14 days of hourly output are
 split across 14 files - one for each day's worth of data. **xbpch**
-provides a second method, ``open_mfbpchdataset()``, for reading in
+provides a second method, :py:func:`xbpch.open_mfbpchdataset`, for reading in
 multiple-file datasets like these, and automatically concatenating them
 on the *time* record dimension:
 
-.. ipython::
+.. ipython:: python
     :verbatim:
 
-    In [1]: import xbpch
+    import xbpch
+    from glob import glob
+    # List all the bpch files in the current directory
+    fns = glob("ND49_*.bpch")
+    # Helper function to extract spatial mean O3 from each file
+    def _preprocess(ds):
+        return ds[['IJ_AVG_S_O3', ]].mean(['lon', 'lat'])
+    ds = xbpch.open_mfbpchdataset(
+        fns, preprocess=_preprocess, dask=True, memmap=True
+    )
 
-    In [1]: from glob import glob
+Again, printing yields the expected results:
 
-    In [2]: fns = glob("ND49_*.bpch")
+.. parsed-literal::
 
-    In [2]: def _preprocess(ds):
-    ......:     return ds[['IJ_AVG_S_O3', ]].mean(['lon', 'lat'])
-
-    In [3]: ds = xbpch.open_mfbpchdataset(
-    ......:     fns, preprocess=_preprocess, dask=True, memmap=True
-    ......: )
-
-    In [4]: print(ds)
-    Out[4]: <xarray.Dataset>
+    <xarray.Dataset>
     Dimensions:      (time: 336)
     Coordinates:
       * time         (time) datetime64[ns] 2006-01-01T01:00:00 ...

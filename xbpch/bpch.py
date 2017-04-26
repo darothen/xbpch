@@ -123,7 +123,6 @@ class BPCHFile(object):
             Use memory-mapping to read data from file
         dask_delayed : bool
             Use dask to create delayed references to the data-reading functions
-
         """
 
         self.mode = mode

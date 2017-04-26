@@ -130,7 +130,7 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
                        preprocess=None, lock=None, **kwargs):
     """ Open multiple bpch files as a single dataset.
 
-    You *must* have dask installed for this to work, as this greatly
+    You must have dask installed for this to work, as this greatly
     simplifies issues relating to multi-file I/O.
 
     Also, please note that this is not a very performant routine. I/O is still
@@ -172,7 +172,7 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
         before dask's multi-threaded backend can be used
     **kwargs : optional
         Additional arguments to pass to :py:func:`xbpch.open_bpchdataset`.
-
+    
     """
 
     from xarray.backends.api import _MultiFileCloser
