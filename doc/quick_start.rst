@@ -102,6 +102,19 @@ Again, printing yields the expected results:
     Data variables:
         IJ_AVG_S_O3  (time) float32 2.5524e-08 2.55541e-08 2.55588e-08 ...
 
+Finally, if you don't want to drop into a Python interpreter but just want
+to quickly convert your binary data to NetCDF, you can run the utility
+script `bpch_to_nc` which is shipped with this library::
+
+    $ bpch_to_nc /path/to/my/data.bpch /path/to/my/output.nc
+
+    Reading in file(s)...
+
+    Decoding variables...
+
+    Writing to /path/to/my/output.nc ...
+    syncing
+    [####################################] | 100% Completed | 52.1s
 
 .. _GEOS-Chem: http://www.geos-chem.org
 .. _dask: http://dask.pydata.org
