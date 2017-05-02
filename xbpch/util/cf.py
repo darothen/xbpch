@@ -120,6 +120,8 @@ VARNAME_MAP_CHAR = (
     ('=', '_'),
     ('-', '_'),
 )
+# TODO: Variables like BXHGHT_S_N(AIR) should have *(AIR) replaced with
+#       just *_AIR
 def get_valid_varname(varname):
     """
     Replace characters (e.g., ':', '$', '=', '-') of a variable name, which

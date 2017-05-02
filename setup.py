@@ -86,6 +86,9 @@ setup(
 
     packages = find_packages(),
     package_data = {},
+    scripts = [
+        'scripts/bpch_to_nc',
+    ],
 
     classifiers = CLASSIFIERS
 )
