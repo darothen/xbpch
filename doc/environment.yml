@@ -1,7 +1,6 @@
-name: xbpch-docs
+name: xbpch
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=3.5
   - dask>=0.14
@@ -10,6 +9,7 @@ dependencies:
   - ipython
   - future
   - cartopy
+  - pyproj
   - matplotlib
   - numpydoc
   - sphinx

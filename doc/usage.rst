@@ -190,7 +190,8 @@ we create a figure and add an axes with the map projection information
 encoded:
 
 .. ipython:: python
-
+    :verbatim:
+             
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
 
