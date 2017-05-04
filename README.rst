@@ -10,7 +10,7 @@ data into an xarray_- and dask_-powered workflow without necessarily
 pre-processing the data using GAMAP_ or IDL.
 
 This package is maintained as part of a broader, community effort to
-tackle `big data problems in geoscience <https://pangeo-data.github.io/)>`_.
+tackle `big data problems in geoscience <https://pangeo-data.github.io/>`_.
 
 
 Installation
