@@ -126,7 +126,7 @@ data may look something like:
 This graph illustrates that dask is expected to process 12 chunks of data - one
 for each month (timestep) in the dataset. The graph shows the operations for
 reading the data, casting it to the correct data type, and re-scaling, which are
-applied automatically by **xbpch** and xarray. 
+applied automatically by **xbpch** and xarray.
 
 At this point, the data has only been processed in such a way that it fits
 the numpy.ndarray memory model, and thus can be used to construct xarray
@@ -146,13 +146,13 @@ which produces the computational graph
     :alt: Normalization calculation on monthly data
 
     Computational graph for normalizing monthly data
-    
+
 A second key function of ``dask`` is to analyze and parse these computational
 graphs into a simplified form. In practice, the resulting graph will be
 much simpler, which can dramatically speed up your analysis. For instance, if
 you sub-sample the variables and timesteps used in your analysis, **xbpch**
 (through dask) will avoid reading extra, unused data from the input files you passed
-it. 
+it.
 
 .. note::
 
@@ -222,7 +222,7 @@ encoded:
 
 .. ipython:: python
     :verbatim:
-             
+
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
 
@@ -348,3 +348,22 @@ They can then be read back in via xarray
 
     import xarray as xr
     ds = xr.open_dataset("my_bpch_data.nc")
+
+.. note::
+
+   As of v0.2.0, immediately writing to netcdf may not work due to the way variable
+   units and scaling factors are encoded when they are read into **xbpch**. This
+   will be fixed once some upstream issues with xarray are patched. If you run into
+   the following ``ValueError``::
+
+     ValueError: Failed hard to prevent overwriting key 'scale_factor'
+
+   then before you save it, process it with the :meth:`xbpch.common.fix_attr_encoding()`
+   method
+
+   .. ipython:: python
+     :verbatim:
+
+     my_ds = xbpch.common.fix_attr_encoding(my_ds)
+
+     my_ds.to_netcdf("my_data.nc")
