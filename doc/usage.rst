@@ -61,7 +61,7 @@ Eager vs Lazy Loading
 ^^^^^^^^^^^^^^^^^^^^^
 
 One of the main advantages to using **xbpch** is that it allows you to access
-data without immediately needing to load it all into memory. On a modern
+data without immediately need to read it all from disk. On a modern
 analysis cluster, this isn't a problem, but if you want to process output
 on your laptop, you can quickly run into situations where all of your data
 won't fit in memory. In those situations, you have to tediously block your
@@ -69,20 +69,23 @@ analysis algorithms/pipeline.
 
 .. note::
 
-    Even though you may request lazily-loaded data, there **xpbch** still needs
+    Even though you may request lazily-loaded data, **xpbch** still needs
     to read your input file to parse its contents. This requires iterating
-    line-by-line through the input file, so it may take some time.
+    line-by-line through the input file, so it may take some time (about
+    ~10 seconds to read a 6GB file on my late-2016 MacBook Pro).
     Unfortunately, if we don't do this, we can't infer the tracers or their
     distribution over multiple timesteps containined in the input file.
 
 The keyword arguments ``memmap`` and ``dask`` control how data is read from
 your bpch files.
 
-- ``memmap``: if enabled, the data for each timestep and variable will be
-    accessed through a memory-map into the input file
-- ``dask``: if enabled, the function to read each timestep for each variable
-    will be wrapped in a ``dask.delayed`` object, initiating a task graph
-    for accessing the data
+``memmap``
+  if enabled, the data for each timestep and variable will be
+  accessed through a memory-map into the input file
+``dask``
+  if enabled, the function to read each timestep for each variable
+  will be wrapped in a ``dask.delayed`` object, initiating a task graph
+  for accessing the data
 
 .. warning::
 
@@ -102,8 +105,8 @@ Chunking
 When data is loaded with the ``dask`` flag enabled, all the operations
 necessary to create contiguous chunks of data are deferred. Because of the way
 data is written to bpch files by GEOS-Chem, these deferred actions are all
-based on single timesteps of data for each variable. Thus, in the parlance
-of dask, all the data is implicitly chunked on the **time** dimension.
+based on single timesteps of data for each variable by default. Thus, in the
+parlance of dask, all the data is implicitly chunked on the **time** dimension.
 
 When dask encounters chunked calculations, it will automatically attempt
 to parallelize them across all the cores available on your machine, and will
@@ -119,6 +122,11 @@ data may look something like:
 
     Tasks for reading and processing monthly output for a single variable in
     a year-long bpch output file
+
+This graph illustrates that dask is expected to process 12 chunks of data - one
+for each month (timestep) in the dataset. The graph shows the operations for
+reading the data, casting it to the correct data type, and re-scaling, which are
+applied automatically by **xbpch** and xarray. 
 
 At this point, the data has only been processed in such a way that it fits
 the numpy.ndarray memory model, and thus can be used to construct xarray
@@ -138,22 +146,45 @@ which produces the computational graph
     :alt: Normalization calculation on monthly data
 
     Computational graph for normalizing monthly data
-
+    
 A second key function of ``dask`` is to analyze and parse these computational
 graphs into a simplified form. In practice, the resulting graph will be
-much simpler.
+much simpler, which can dramatically speed up your analysis. For instance, if
+you sub-sample the variables and timesteps used in your analysis, **xbpch**
+(through dask) will avoid reading extra, unused data from the input files you passed
+it. 
 
 .. note::
 
     Sometimes it's advantagous to re-chunk a dataset (see
     `here <http://xarray.pydata.org/en/stable/dask.html>`_ for a discussion on
-    when this may be the case). This is accomplished through xarray.
+    when this may be the case). This is easily accomplished through xarray, or
+    can be done directly on the ``dask.array``\s containing your data if you
+    have a more complex analysis to perform.
 
 
 Finally, it's important to know that the computational graphs that dask
 produces are never evaluated until you explicitly call ``.load()`` on a dask
-array or xarray Data{Array,set}.
+array or xarray Data{Array,set}. Different computations or uses for your data
+might imply an automatic ``load()``; for instance, if you use the plotting
+wrapper built into xarray, it will (necessarily) eagerly load your data. If you'd
+like to monitor the progress of a very long analysis built through
+**xbpch**/xarray/dask, you can use the built-in diagnostic tools from dask:
 
+.. ipython:: python
+    :verbatim:
+
+    from dask.diagnostics import ProgressBar
+
+    # Construct some analysis
+    my_ds = ...
+
+    # Eagerly compute the results
+    with ProgressBar() as pb:
+        my_ds.load()
+
+.. parsed-literal::
+   [####################################] | 100% Completed | 10.2s
 
 Geographic Visualization
 ------------------------

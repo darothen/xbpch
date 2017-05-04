@@ -81,12 +81,16 @@ on the *time* record dimension:
     :verbatim:
 
     import xbpch
+
     from glob import glob
+
     # List all the bpch files in the current directory
     fns = glob("ND49_*.bpch")
+    
     # Helper function to extract spatial mean O3 from each file
     def _preprocess(ds):
         return ds[['IJ_AVG_S_O3', ]].mean(['lon', 'lat'])
+        
     ds = xbpch.open_mfbpchdataset(
         fns, preprocess=_preprocess, dask=True, memmap=True
     )
