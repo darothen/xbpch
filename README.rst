@@ -12,6 +12,33 @@ pre-processing the data using GAMAP_ or IDL.
 This package is maintained as part of a broader, community effort to
 tackle `big data problems in geoscience <https://pangeo-data.github.io/>`_.
 
+What's the Deal?
+----------------
+
+The `contemporary scientific Python software stack <https://speakerdeck.com/jakevdp/the-state-of-the-stack-scipy-2015-keynote>`_
+provides free, powerful tools for nearly all of your data processing, analysis,
+and visualization needs. These tools are `well supported <https://www.numfocus.org/>`_
+by a large community of heavily invested users and developers from academia,
+government, and industry. They are also developed (mostly) as part of community-based,
+open-source, and user-driven projects.
+
+For nearly any application you might have in the geosciences, you can start using this powerful,
+free software stack *today* with minimal friction. However, one friction point for GEOS-Chem
+users is that it is difficult to work with legacy bpch-format diagnostics files. **xbpch** solves
+this problem by providing a convenient and performant way to read these files into a modern
+Python-based analysis or workflow.
+
+Furthermore, **xbpch** is 100% future-proof. In two years, when your GEOS-Chem simulations are
+writing NetCDF diagnostics, you won't need to change more than a single line of code in any
+of your scripts using **xbpch**. All you'll need to do is swap out **xbpch**'s function for reading
+data and instead defer to it's parent package (xarray). It will *literally* take less than 10
+keystrokes to make this change in your code. Plus - you'll be backwards compatible with any legacy
+output you need to analyze.
+
+So give **xbpch** a try, and let me know what issues you run in to! If we solve them once today,
+they'll be solved in perpetuity, which means more time for you to do science and less time to worry
+about processing data.
+
 
 Installation
 ------------
