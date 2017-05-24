@@ -313,9 +313,8 @@ achieved in just a few lines of code via xarray:
 
     o3 = ds.IJ_AVG_S_O3
     mda8_o3 = (
-        o3.resample("8H", "time", how='mean')
-          .rolling(time=8)
-          .max()
+        o3.rolling(time=8, min_periods=6).mean()
+          .resample("D", "time", how='max')
     )
 
 This code is highly performant; the ``.rolling()`` operation is farmed out to
