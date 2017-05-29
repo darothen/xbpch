@@ -22,22 +22,24 @@ by a large community of heavily invested users and developers from academia,
 government, and industry. They are also developed (mostly) as part of community-based,
 open-source, and user-driven projects.
 
-For nearly any application you might have in the geosciences, you can start using this powerful,
-free software stack *today* with minimal friction. However, one friction point for GEOS-Chem
-users is that it is difficult to work with legacy bpch-format diagnostics files. **xbpch** solves
-this problem by providing a convenient and performant way to read these files into a modern
-Python-based analysis or workflow.
+For nearly any application you might have in the geosciences, you can start using
+this powerful, free software stack *today* with minimal friction. However,
+one friction point for GEOS-Chem users is that it is difficult to work with legacy
+bpch-format diagnostics files. **xbpch** solves this problem by providing a
+convenient and performant way to read these files into a modern Python-based
+analysis or workflow.
 
-Furthermore, **xbpch** is 100% future-proof. In two years, when your GEOS-Chem simulations are
-writing NetCDF diagnostics, you won't need to change more than a single line of code in any
-of your scripts using **xbpch**. All you'll need to do is swap out **xbpch**'s function for reading
-data and instead defer to it's parent package (xarray). It will *literally* take less than 10
-keystrokes to make this change in your code. Plus - you'll be backwards compatible with any legacy
+Furthermore, **xbpch** is 100% future-proof. In two years, when your GEOS-Chem
+simulations are writing NetCDF diagnostics, you won't need to change more than a
+single line of code in any of your scripts using **xbpch**. All you'll need to do
+is swap out **xbpch**'s function for reading data and instead defer to it's parent
+package (xarray). It will *literally* take less than 10 keystrokes to make this
+change in your code. Plus - you'll be backwards compatible with any legacy
 output you need to analyze.
 
-So give **xbpch** a try, and let me know what issues you run in to! If we solve them once today,
-they'll be solved in perpetuity, which means more time for you to do science and less time to worry
-about processing data.
+So give **xbpch** a try, and let me know what issues you run in to! If we solve
+them once today, they'll be solved in perpetuity, which means more time for you
+to do science and less time to worry about processing data.
 
 
 Installation
@@ -59,9 +61,13 @@ terminal::
 
     $ conda install xarray dask
 
-In the future, **xbpch** will be available on both pip and and conda,
-but for now it must be installed directly from source. To do this, you
-can either clone the source directory and install::
+Then, you can install **xbpch** `from PyPI <https://pypi.python
+.org/pypi/xbpch/>`_::
+
+    $ pip install xbpch
+
+Alternatively, you can install **xbpch** from its source. To do this, you
+can either clone the source directory and manually install::
 
     $ git clone https://github.com/darothen/xbpch.git
     $ cd xbpch

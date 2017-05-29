@@ -9,7 +9,10 @@ from textwrap import dedent
 
 DESCRIPTION = "xarray interface for bpch files"
 LONG_DESCRIPTION = """\
-**xpbch** is a simple utility for reading the proprietary binary punch format (bpch) outputs used in versions of GEOS-Chem earlier than v11-02. The utility allows a user to load this data into an xarray/dask-powered workflow without necessarily pre-processing the data using GAMAP or IDL.
+**xpbch** is a simple utility for reading the proprietary binary punch format
+(bpch) outputs used in versions of GEOS-Chem earlier than v11-02. The utility
+allows a user to load this data into an xarray/dask-powered workflow without
+necessarily pre-processing the data using GAMAP or IDL.
 """
 
 DISTNAME = "xbpch"
@@ -17,7 +20,7 @@ AUTHOR = "Daniel Rothenberg"
 AUTHOR_EMAIL = "darothen@mit.edu"
 URL = "https://github.com/darothen/xbpch"
 LICENSE = "MIT"
-DOWNLOAD_URL = "https://github.com/darothen/xbpch"
+DOWNLOAD_URL = "https://github.com/darothen/xbpch/tarballs/v0.3.0"
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',

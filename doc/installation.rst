@@ -33,16 +33,15 @@ A conda_ package is not yet available for **xbpch**, but will be soon.
 Installation via pip
 --------------------
 
-**xbpch** is not yet uploaded to `pypi <https://pypi.python.org/pypi>`_, but
-you can still install using ``pip``::
+**xbpch** is available on `PyPI <https://pypi.python.org/pypi/xbpch/>`_, and
+can be installed using setuptools::
 
-    $ pip install git+https://github.com/darothen/xbpch.git
-
+    $ pip install xbpch
 
 Installation from source
 ------------------------
 
-Alternatively, if you're developing or contributing to **xbpch**, you may wish
+If you're developing or contributing to **xbpch**, you may wish
 instead to install directly from a local copy of the source code. To do so,
 you must first clone the the master repository (or a fork) and install locally
 via pip::
@@ -53,6 +52,10 @@ via pip::
 
 You will need to substitute in the path to your preferred repository/mirror
 of the source code.
+
+Note that you can also install directly from the source using setuptools::
+
+    $ pip install git+https://github.com/darothen/xbpch.git
 
 .. _Anaconda: https://www.continuum.io/downloads
 .. _conda: http://conda.pydata.org
