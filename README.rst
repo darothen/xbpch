@@ -1,7 +1,15 @@
 xbpch: xarray interface for bpch files
 ======================================
 
-|rtd|
+.. image:: https://badge.fury.io/py/xbpch.svg
+    :target: https://badge.fury.io/py/xbpch
+    :alt: PyPI version
+.. image:: https://readthedocs.org/projects/xbpch/badge/?version=latest
+    :target: http://xbpch.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+.. image:: https://zenodo.org/badge/89022822.svg
+    :target: https://zenodo.org/badge/latestdoi/89022822
+    :alt: Zenodo DOI
 
 **xpbch** is a simple utility for reading the proprietary
 `binary punch format (bpch) outputs <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_Output_Files#Binary_Punch_File_Format)>`_ used in versions
@@ -157,6 +165,4 @@ Contact
 .. _GEOS-Chem: http://www.geos-chem.org
 .. _xarray: http://xarray.pydata.org/
 
-.. |rtd| image:: https://readthedocs.org/projects/xbpch/badge/?version=latest
-   :target: http://xbpch.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation Status
+
