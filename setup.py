@@ -20,7 +20,7 @@ LICENSE = "MIT"
 DOWNLOAD_URL = "https://github.com/darothen/xbpch"
 
 CLASSIFIERS = [
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'License :: OSI Approved :: MIT License',
     'Operating System :: OS Independent',
     'Intended Audience :: Science/Research',
@@ -35,7 +35,7 @@ MAJOR = 0
 MINOR = 3
 MICRO = 0
 VERSION = "{}.{}.{}".format(MAJOR, MINOR, MICRO)
-DEV = True
+DEV = False
 
 # Correct versioning with git info if DEV
 if DEV:
