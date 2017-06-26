@@ -32,10 +32,10 @@ open-source, and user-driven projects.
 
 For nearly any application you might have in the geosciences, you can start using
 this powerful, free software stack *today* with minimal friction. However,
-one friction point for GEOS-Chem users is that it is difficult to work with legacy
-bpch-format diagnostics files. **xbpch** solves this problem by providing a
-convenient and performant way to read these files into a modern Python-based
-analysis or workflow.
+one friction point that has tripped up adoption by GEOS-Chem users is that it
+is difficult to work with legacy bpch-format diagnostics files. **xbpch**
+solves this problem by providing a convenient and performant way to read
+these files into a modern Python-based analysis or workflow.
 
 Furthermore, **xbpch** is 100% future-proof. In two years, when your GEOS-Chem
 simulations are writing NetCDF diagnostics, you won't need to change more than a
@@ -126,7 +126,7 @@ solving this problem.
 Acknowledgments
 ---------------
 
-This utility packages together a few pre-existing but toolkits which
+This utility packages together a few pre-existing toolkits which
 have been floating around the Python-GEOS-Chem community. In particular,
 I would like to acknowledge the following pieces of software which I have
 built this utility around:
