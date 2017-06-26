@@ -275,6 +275,9 @@ class BPCHDataStore(AbstractDataStore):
         self._bpch._read_metadata()
         self._bpch._read_header()
 
+        # Parse the binary file and prepare to add variables to the DataStore
+        self._bpch._read_var_data()
+
         # Create storage dicts for variables and attributes, to be used later
         # when xarray needs to access the data
         self._variables = OrderedDict()
@@ -338,19 +341,36 @@ class BPCHDataStore(AbstractDataStore):
 
         ## Latitude / Longitude
         # TODO: Add lon/lat bounds
+
+        # Detect if we're on a nested grid; in that case, we'll have a displaced
+        # origin set in the variable attributes we previously read
+        ref_key = list(self._bpch.var_attrs.keys())[0]
+        ref_attrs = self._bpch.var_attrs[ref_key]
+        self.is_nested = (ref_attrs['origin'] != (1, 1, 1))
+
+        lon_centers = self.ctm_info.lon_centers
+        lat_centers = self.ctm_info.lat_centers
+
+        if self.is_nested:
+            ix, iy, _ = ref_attrs['origin']
+            nx, ny, _ = ref_attrs['original_shape']
+            # Correct i{x,y} for IDL->Python indexing (1-indexed -> 0-indexed)
+            ix -= 1
+            iy -= 1
+            lon_centers = lon_centers[ix:ix+nx]
+            lat_centers = lat_centers[iy:iy+ny]
+
         self._variables['lon'] = xr.Variable(
-            ['lon'], self.ctm_info.lon_centers,
+            ['lon'], lon_centers,
             {'long_name': 'longitude', 'units': 'degrees_east'}
         )
         self._variables['lat'] = xr.Variable(
-            ['lat'], self.ctm_info.lat_centers,
+            ['lat'], lat_centers,
             {'long_name': 'latitude', 'units': 'degrees_north'}
         )
         # TODO: Fix longitudes if ctm_grid.center180
 
-
-        # Parse the binary file and prepare to add variables to the DataStore
-        self._bpch._read_var_data()
+        # Add variables from the parsed BPCH file to our DataStore
         for vname in list(self._bpch.var_data.keys()):
 
             var_data = self._bpch.var_data[vname]
