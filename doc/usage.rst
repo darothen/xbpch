@@ -57,6 +57,23 @@ fields, this would entail
     )
 
 
+What Works and Doesn't Work
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**xbpch** should work with most standard GEOS-Chem outputs going back to at
+least v9-02. It has been tested against some of these standard outputs, but
+not exhaustively. If you have an idiosyncratic GEOS-Chem output (e.g. from a
+specialized version of the model with custom tracers or a new grid), please
+give **xbpch** a try and if it fails, post a `an Issue on our GitHub page <https://github.com/darothen/xbpch/issues>`_
+to let us know.
+
+The following configurations have been tested and vetted:
+
+- Standard output on standard grids
+- ND49 output on standard grids
+- ND49 output on nested North America grid (should work for all nested grids)
+
+
 Eager vs Lazy Loading
 ^^^^^^^^^^^^^^^^^^^^^
 
