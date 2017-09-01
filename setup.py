@@ -9,7 +9,7 @@ from textwrap import dedent
 
 MAJOR = 0
 MINOR = 3
-MICRO = 1
+MICRO = 2
 VERSION = "{}.{}.{}".format(MAJOR, MINOR, MICRO)
 DEV = False
 
@@ -54,6 +54,7 @@ CLASSIFIERS = [
     'Operating System :: OS Independent',
     'Intended Audience :: Science/Research',
     'Programming Language :: Python',
+    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
