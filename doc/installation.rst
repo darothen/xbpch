@@ -5,7 +5,7 @@ Installation
 Requirements
 ------------
 
-**xbpch** is written in pure Python (version >= 3.5) , and leans on two important
+**xbpch** is written in pure Python (version >= 3.5), and leans on two important
 libraries:
 
 1. xarray_ (version >= 0.9): a pandas-like toolkit for working with
@@ -17,17 +17,28 @@ parallel computations on both tabular and array-like datasets
 The easiest way to install these libraries is to use the conda_
 package manager::
 
-    $ conda install xarray dask
+    $ conda install -c conda-forge xarray dask
 
 conda_ can be obtained as part of the Anaconda_ Python distribution
 from Continuum IO, although you do not need all of the packages it
-provides in order to use **xbpch**.
+provides in order to use **xbpch**. Note that we recommend installing the latest
+versions from community-maintained `conda-forge <https://conda-forge.org/>`_
+collection, since these usually contain bug-fixes and additional features.
+
+.. note::
+
+    Basic support for Python 2.7 is available in **xbpch** but it has not been
+    tested, since the evolutionary GCPy package will only support Python 3. If,
+    for some reason, you must use Python 2.7 and encounter problems, please
+    reach out to us and we may be able to fix them.
 
 
 Installation via conda
 ----------------------
 
-A conda_ package is not yet available for **xbpch**, but will be soon.
+The preferred way to install **xbpch** is also via conda_::
+
+    $ conda install -c conda-forge xbpch
 
 
 Installation via pip

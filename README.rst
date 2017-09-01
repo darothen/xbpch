@@ -64,17 +64,16 @@ description implies, it requires up-to-date copies of xarray_
 these packages is by using the conda_ package management system, or
 the `Anaconda Python distribution <https://www.continuum.io/downloads>`_.
 
-To install the dependencies for **xbpch** using conda, execute from a
-terminal::
+To install **xbpch** and its dependencies using conda, execute from a terminal::
 
-    $ conda install xarray dask
+    $ conda install -c conda-forge xbpch xarray dask
 
-Then, you can install **xbpch** `from PyPI <https://pypi.python
+Alternatively, you can install **xbpch** `from PyPI <https://pypi.python
 .org/pypi/xbpch/>`_::
 
     $ pip install xbpch
 
-Alternatively, you can install **xbpch** from its source. To do this, you
+You can also install **xbpch** from its source. To do this, you
 can either clone the source directory and manually install::
 
     $ git clone https://github.com/darothen/xbpch.git
