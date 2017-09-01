@@ -93,7 +93,7 @@ class BPCHFile(object):
         A pointer to the open unformatted Fortran binary output (the original
         bpch file)
     var_data, var_attrs : dict
-        Containers of ``BPCHDataBundle``s and dicts, respectively, holding
+        Containers of `BPCHDataBundle`s and dicts, respectively, holding
         the accessor functions to the raw bpch data and their associated
         metadata
 
@@ -173,8 +173,6 @@ class BPCHFile(object):
         if (mode.startswith('r') and self.eager):
             self._read()
 
-
-
     def close(self):
         """ Close this bpch file.
 
@@ -202,7 +200,6 @@ class BPCHFile(object):
         self._read_header()
         self._read_var_data()
 
-
     def _read_metadata(self):
         """ Read the main metadata packaged within a bpch file, indicating
         the output filetype and its title.
@@ -216,19 +213,14 @@ class BPCHFile(object):
             filetype = str(filetype, 'utf-8')
             filetitle = str(filetitle, 'utf-8')
         except:
-            # TODO: Handle this edge-case of converting file metadata
-            #       more elegantly.
+            # TODO: Handle this edge-case of converting file metadata more elegantly.
             pass
 
         self.__setattr__('filetype', filetype)
         self.__setattr__('filetitle', filetitle)
 
-
-    def _read_header(self, all_info=False):
-        """ Process the header information for a bpch file, which includes
-        the data model name and the grid resolution / specifications.
-
-        """
+    def _read_header(self):
+        """ Process the header information (data model / grid spec) """
 
         self._header_pos = self.fp.tell()
 

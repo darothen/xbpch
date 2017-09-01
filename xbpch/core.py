@@ -149,10 +149,10 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
     concat_dim : str, default='time'
         Dimension to concatenate Datasets over. We default to "time" since this
         is how GEOS-Chem splits output files
-    compat : {'identical', 'equals', 'broadcast_equals',
-              'no_conflicts'}, optional
+    compat : str (optional)
         String indicating how to compare variables of the same name for
         potential conflicts when merging:
+
         - 'broadcast_equals': all values must be equal when variables are
           broadcast against each other to ensure common dimensions.
         - 'equals': all values and dimensions must be the same.
