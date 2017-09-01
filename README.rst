@@ -60,7 +60,7 @@ Requirements
 modifications it  would likely work with Python 2.7 (`Pull Requests are
 welcome! <https://github.com/darothen/xbpch/pulls>`_). As the package
 description implies, it requires up-to-date copies of xarray_
-(>= version 0.9) and [dask] (>= version 0.14). The best way to install
+(>= version 0.9) and dask_ (>= version 0.14). The best way to install
 these packages is by using the conda_ package management system, or
 the `Anaconda Python distribution <https://www.continuum.io/downloads>`_.
 

@@ -7,33 +7,6 @@ from setuptools import setup, find_packages
 
 from textwrap import dedent
 
-DESCRIPTION = "xarray interface for bpch files"
-LONG_DESCRIPTION = """\
-**xpbch** is a simple utility for reading the proprietary binary punch format
-(bpch) outputs used in versions of GEOS-Chem earlier than v11-02. The utility
-allows a user to load this data into an xarray/dask-powered workflow without
-necessarily pre-processing the data using GAMAP or IDL.
-"""
-
-DISTNAME = "xbpch"
-AUTHOR = "Daniel Rothenberg"
-AUTHOR_EMAIL = "darothen@mit.edu"
-URL = "https://github.com/darothen/xbpch"
-LICENSE = "MIT"
-DOWNLOAD_URL = "https://github.com/darothen/xbpch/tarballs/v0.3.0"
-
-CLASSIFIERS = [
-    'Development Status :: 4 - Beta',
-    'License :: OSI Approved :: MIT License',
-    'Operating System :: OS Independent',
-    'Intended Audience :: Science/Research',
-    'Programming Language :: Python',
-    'Programming Language :: Python :: 3.4',
-    'Programming Language :: Python :: 3.5',
-    'Programming Language :: Python :: 3.6',
-    'Topic :: Scientific/Engineering',
-]
-
 MAJOR = 0
 MINOR = 3
 MICRO = 1
@@ -58,6 +31,34 @@ if DEV:
         git_rev = git_rev.decode('ascii') # necessary for Python >= 3
 
         VERSION += ".dev-{}".format(git_rev)
+
+DESCRIPTION = "xarray interface for bpch files"
+LONG_DESCRIPTION = """\
+**xpbch** is a simple utility for reading the proprietary binary punch format
+(bpch) outputs used in versions of GEOS-Chem earlier than v11-02. The utility
+allows a user to load this data into an xarray/dask-powered workflow without
+necessarily pre-processing the data using GAMAP or IDL.
+"""
+
+DISTNAME = "xbpch"
+AUTHOR = "Daniel Rothenberg"
+AUTHOR_EMAIL = "darothen@mit.edu"
+URL = "https://github.com/darothen/xbpch"
+LICENSE = "MIT"
+DOWNLOAD_URL = ("https://github.com/darothen/xbpch/archive/v{}.tar.gz"
+                .format(VERSION))
+
+CLASSIFIERS = [
+    'Development Status :: 5 - Production/Stable',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: OS Independent',
+    'Intended Audience :: Science/Research',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
+    'Topic :: Scientific/Engineering',
+]
 
 def _write_version_file():
 
