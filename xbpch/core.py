@@ -353,7 +353,7 @@ class BPCHDataStore(AbstractDataStore):
 
         if self.is_nested:
             ix, iy, _ = ref_attrs['origin']
-            nx, ny, _ = ref_attrs['original_shape']
+            nx, ny, *_ = ref_attrs['original_shape']
             # Correct i{x,y} for IDL->Python indexing (1-indexed -> 0-indexed)
             ix -= 1
             iy -= 1
