@@ -11,8 +11,6 @@ References:
 import datetime
 
 from xarray.core.variable import as_variable, Variable
-from xarray.core.indexing import LazilyIndexedArray
-from xarray.conventions import MaskedAndScaledArray
 
 #: CTM timestamp definitions
 CTM_TIME_UNIT_STR = 'hours since 1985-01-01 00:00:00'
@@ -185,7 +183,6 @@ def enforce_cf_variable(var, mask_and_scale=True):
 
         # TODO: Once the xr.decode_cf bug is fixed, we won't need to manually
         #       handle masking/scaling
-        # data = MaskedAndScaledArray(data, scale_factor=scale, dtype=orig_dtype)
         if mask_and_scale:
             data = scale*data
 
@@ -202,6 +199,4 @@ def enforce_cf_variable(var, mask_and_scale=True):
 
     # TODO: Once the xr.decode_cf bug is fixed, we won't need to manually
     #       handle masking/scaling
-    # return Variable(dims, LazilyIndexedArray(data), attrs, encoding=encoding)
     return Variable(dims, data, attrs, encoding=encoding)
-
