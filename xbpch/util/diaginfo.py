@@ -17,21 +17,21 @@ diag_recs = [
     diag_rec("-0", 1, str, ' ', True, None),
     diag_rec('name', 40, str, None, True, "Name of the category"),
     diag_rec('description', 100, str, None, True, "Description of category"),
-    diag_rec("-1", 1, str, ' ', True, None),
+    diag_rec("-1", 1, str, ' ', True, None)
 ]
 
 #: Info for parsing tracer records
 tracer_rec = diag_rec
 tracer_recs = [
     tracer_rec('name', 8, str, None, True, "Tracer name"),
-    tracer_rec("-1", 1, str, ' ', True, None),
+    tracer_rec("-0", 1, str, ' ', True, None),
     tracer_rec('full_name', 30, str, None, True, "Full tracer name"),
     tracer_rec('molwt', 10, float, 1., True, "Molecular weight (kg/mole)"),
     tracer_rec('C', 3, int, 1, True, "# moles C/moles tracer for HCs"),
     tracer_rec('tracer', 9, int, None, True, "Tracer number"),
     tracer_rec('scale', 10, float, 1e9, True, "Standard scale factor to convert to"
                                               " given units"),
-    tracer_rec("-2", 1, str, ' ', True, None),
+    tracer_rec("-1", 1, str, ' ', True, None),
     tracer_rec('unit', 40, str, 'ppbv', True, "Unit string"),
 ]
 
@@ -51,25 +51,10 @@ def get_diaginfo(diaginfo_file):
 
     """
 
-    widths = []
-    col_names = []
-    dtypes = []
-    usecols = []
-    _counter = 0  # Count null diag reocrds for bookkeeping
-    for rec in diag_recs:
-        widths.append(rec.width)
-        dtypes.append(rec.type)
-
-        name = rec.name
-        # Add a count suffix to null diag records to avoid a warning
-        # where pd.read_fwf will UserWarning on duplicate names in the 
-        # table
-        if name == "-":
-            name += "{:d}".format(_counter)
-            _counter += 1
-        else:
-            usecols.append(name)
-        col_names.append(name)
+    widths = [rec.width for rec in diag_recs]
+    col_names = [rec.name for rec in diag_recs]
+    dtypes = [rec.type for rec in diag_recs]
+    usecols = [name for name in col_names if not name.startswith('-')]
 
     diag_df = pd.read_fwf(diaginfo_file, widths=widths, names=col_names,
                           dtypes=dtypes, comment="#", header=None,
@@ -96,26 +81,11 @@ def get_tracerinfo(tracerinfo_file):
 
     """
 
-    widths = []
-    col_names = []
-    dtypes = []
-    usecols = []
-    _counter = 0  # Count null tracer reocrds for bookkeeping
-    for i, rec in enumerate(tracer_recs):
-        widths.append(rec.width)
-        dtypes.append(rec.type)
+    widths = [rec.width for rec in tracer_recs]
+    col_names = [rec.name for rec in tracer_recs]
+    dtypes = [rec.type for rec in tracer_recs]
+    usecols = [name for name in col_names if not name.startswith('-')]
 
-        name = rec.name
-        # Add a count suffix to null tracer records to avoid a warning
-        # where pd.read_fwf will UserWarning on duplicate names in the 
-        # table
-        if name == "-":
-            name += "{:d}".format(_counter)
-            _counter += 1
-        else:
-            usecols.append(name)
-        col_names.append(name)
-        
     tracer_df = pd.read_fwf(tracerinfo_file, widths=widths, names=col_names,
                             dtypes=dtypes, comment="#", header=None,
                             usecols=usecols)
