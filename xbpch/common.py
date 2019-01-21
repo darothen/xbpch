@@ -85,7 +85,8 @@ def fix_attr_encoding(ds):
         da = _maybe_decode_attr(da, 'hydrocarbon')
         da = _maybe_decode_attr(da, 'chemical')
     # Also delete attributes on time.
-    times = ds.time
-    times = _maybe_del_attr(times, 'units')
+    if hasattr(ds, 'time'):
+        times = ds.time
+        times = _maybe_del_attr(times, 'units')
 
     return ds

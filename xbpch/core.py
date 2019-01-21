@@ -88,7 +88,7 @@ def open_bpchdataset(filename, fields=[], categories=[],
     if decode_cf:
         decoded_vars = OrderedDict()
         rename_dict = {}
-        for v in ds:
+        for v in ds.variables:
             cf_name = cf.get_valid_varname(v)
             rename_dict[v] = cf_name
             new_var = cf.enforce_cf_variable(ds[v])

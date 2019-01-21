@@ -3,6 +3,7 @@ channels:
     - conda-forge
 dependencies:
     - python=2.7
+    - cython
     - dask>=0.14
     - future
     - numpy
