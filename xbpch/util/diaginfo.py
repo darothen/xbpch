@@ -9,31 +9,29 @@ from .. common import C_MOLECULAR_WEIGHT
 #: Info for parsing diagnostic records
 diag_rec = namedtuple("diag_rec",
                       ["name", "width", "type", "default", "read_only", "desc"])
-diag_spacer = diag_rec("-", 1, str, ' ', True, None)
 diag_recs = [
     diag_rec('offset', 8, int, 0, True,
              "Offset (constant to add to tracer numbers in order to"
              " distinguish between diff categories, as stored in"
              " tracerinfo.dat)"),
-    diag_spacer,
+    diag_rec("-0", 1, str, ' ', True, None),
     diag_rec('name', 40, str, None, True, "Name of the category"),
     diag_rec('description', 100, str, None, True, "Description of category"),
-    diag_spacer
+    diag_rec("-1", 1, str, ' ', True, None),
 ]
 
 #: Info for parsing tracer records
 tracer_rec = diag_rec
-spacer = tracer_rec("-", 1, str, ' ', True, None)
 tracer_recs = [
     tracer_rec('name', 8, str, None, True, "Tracer name"),
-    spacer,
+    tracer_rec("-1", 1, str, ' ', True, None),
     tracer_rec('full_name', 30, str, None, True, "Full tracer name"),
     tracer_rec('molwt', 10, float, 1., True, "Molecular weight (kg/mole)"),
     tracer_rec('C', 3, int, 1, True, "# moles C/moles tracer for HCs"),
     tracer_rec('tracer', 9, int, None, True, "Tracer number"),
     tracer_rec('scale', 10, float, 1e9, True, "Standard scale factor to convert to"
                                               " given units"),
-    spacer,
+    tracer_rec("-2", 1, str, ' ', True, None),
     tracer_rec('unit', 40, str, 'ppbv', True, "Unit string"),
 ]
 
@@ -103,7 +101,7 @@ def get_tracerinfo(tracerinfo_file):
     dtypes = []
     usecols = []
     _counter = 0  # Count null tracer reocrds for bookkeeping
-    for rec in tracer_recs:
+    for i, rec in enumerate(tracer_recs):
         widths.append(rec.width)
         dtypes.append(rec.type)
 
