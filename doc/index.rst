@@ -30,6 +30,10 @@ to out-of-core and parallel processing of GEOS-Chem_ output.
 Recent Updates
 --------------
 
+**v0.3.4 (January 20, 2019)**
+
+- Miscellaneous fixes for issues filed on GitHub Issue Tracker
+
 **v0.3.3 (March 18, 2018)**
 
 - Clean-up for xarray v0.10.2 compatibility
