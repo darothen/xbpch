@@ -84,6 +84,12 @@ or, you can install via pip directly from git::
 
     $ pip install git+https://github.com/darothen/xbpch.git
 
+Please note that if you locally clone the repository from GitHub but do not
+explicitly install the package using ``setup.py``, the file ``xbpch/version.py``
+will not get written properly and you will not be able to use the package. 
+We strongly recommend you install the package using traditional techniques to
+ensure that all dependencies are properly added to your environment.
+
 Quick Start
 -----------
 
