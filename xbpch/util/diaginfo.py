@@ -95,7 +95,7 @@ def get_tracerinfo(tracerinfo_file):
     # erroneously dropped short/long tracer names in certain tracerinfo.dat outputs.
     # What we do here is figure out which rows were erroneously processed (they'll 
     # have NaNs in them) and raise a warning if there are any
-    na_free = tracer_df.dropna()
+    na_free = tracer_df.dropna(subset=['tracer', 'scale'])
     only_na = tracer_df[~tracer_df.index.isin(na_free.index)]
     if len(only_na) > 0:
         warn("At least one row in {} wasn't decoded correctly; we strongly"
