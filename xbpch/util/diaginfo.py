@@ -1,5 +1,6 @@
 
 from collections import namedtuple
+from warnings import warn
 
 import os
 import pandas as pd
@@ -60,7 +61,7 @@ def get_diaginfo(diaginfo_file):
                           dtypes=dtypes, comment="#", header=None,
                           usecols=usecols)
     diag_desc = {diag.name: diag.desc for diag in diag_recs
-                 if diag.name != '-'}
+                 if not diag.name.startswith('-')}
 
     return diag_df, diag_desc
 
@@ -89,8 +90,21 @@ def get_tracerinfo(tracerinfo_file):
     tracer_df = pd.read_fwf(tracerinfo_file, widths=widths, names=col_names,
                             dtypes=dtypes, comment="#", header=None,
                             usecols=usecols)
+
+    # Check an edge case related to a bug in GEOS-Chem v12.0.3 which 
+    # erroneously dropped short/long tracer names in certain tracerinfo.dat outputs.
+    # What we do here is figure out which rows were erroneously processed (they'll 
+    # have NaNs in them) and raise a warning if there are any
+    na_free = tracer_df.dropna()
+    only_na = tracer_df[~tracer_df.index.isin(na_free.index)]
+    if len(only_na) > 0:
+        warn("At least one row in {} wasn't decoded correctly; we strongly"
+             " recommend you manually check that file to see that all"
+             " tracers are properly recorded."
+             .format(tracerinfo_file)) 
+
     tracer_desc = {tracer.name: tracer.desc for tracer in tracer_recs
-                 if tracer.name != '-'}
+                   if not tracer.name.startswith('-')}
 
     # Process some of the information about which variables are hydrocarbons
     # and chemical tracers versus other diagnostics.
