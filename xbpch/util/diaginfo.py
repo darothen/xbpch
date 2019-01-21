@@ -53,10 +53,25 @@ def get_diaginfo(diaginfo_file):
 
     """
 
-    widths = [rec.width for rec in diag_recs]
-    col_names = [rec.name for rec in diag_recs]
-    dtypes = [rec.type for rec in diag_recs]
-    usecols = [name for name in col_names if name != '-']
+    widths = []
+    col_names = []
+    dtypes = []
+    usecols = []
+    _counter = 0  # Count null diag reocrds for bookkeeping
+    for rec in diag_recs:
+        widths.append(rec.width)
+        dtypes.append(rec.type)
+
+        name = rec.name
+        # Add a count suffix to null diag records to avoid a warning
+        # where pd.read_fwf will UserWarning on duplicate names in the 
+        # table
+        if name == "-":
+            name += "{:d}".format(_counter)
+            _counter += 1
+        else:
+            usecols.append(name)
+        col_names.append(name)
 
     diag_df = pd.read_fwf(diaginfo_file, widths=widths, names=col_names,
                           dtypes=dtypes, comment="#", header=None,
@@ -83,11 +98,26 @@ def get_tracerinfo(tracerinfo_file):
 
     """
 
-    widths = [rec.width for rec in tracer_recs]
-    col_names = [rec.name for rec in tracer_recs]
-    dtypes = [rec.type for rec in tracer_recs]
-    usecols = [name for name in col_names if name != '-']
+    widths = []
+    col_names = []
+    dtypes = []
+    usecols = []
+    _counter = 0  # Count null tracer reocrds for bookkeeping
+    for rec in tracer_recs:
+        widths.append(rec.width)
+        dtypes.append(rec.type)
 
+        name = rec.name
+        # Add a count suffix to null tracer records to avoid a warning
+        # where pd.read_fwf will UserWarning on duplicate names in the 
+        # table
+        if name == "-":
+            name += "{:d}".format(_counter)
+            _counter += 1
+        else:
+            usecols.append(name)
+        col_names.append(name)
+        
     tracer_df = pd.read_fwf(tracerinfo_file, widths=widths, names=col_names,
                             dtypes=dtypes, comment="#", header=None,
                             usecols=usecols)
