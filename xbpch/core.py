@@ -14,7 +14,6 @@ import dask.array as da
 
 from collections import OrderedDict
 
-from xarray.core.pycompat import basestring
 from xarray.backends.common import AbstractDataStore
 from xarray.core.utils import Frozen
 
@@ -189,7 +188,7 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
 
     # Add th
 
-    if isinstance(paths, basestring):
+    if isinstance(paths, str):
         paths = sorted(glob(paths))
     if not paths:
         raise IOError("No paths to files were passed into open_mfbpchdataset")
