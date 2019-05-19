@@ -30,6 +30,10 @@ to out-of-core and parallel processing of GEOS-Chem_ output.
 Recent Updates
 --------------
 
+**v0.3.5 (May 19, 2019)**
+
+- Fixed incompatibility with xarray arising from backward incompatible changes with Python 2.7
+
 **v0.3.4 (January 20, 2019)**
 
 - Miscellaneous fixes for issues filed on GitHub Issue Tracker
@@ -47,7 +51,7 @@ Recent Updates
 License
 -------
 
-Copyright (c) 2017 Daniel Rothenberg
+Copyright (c) 2019 Daniel Rothenberg
 
 This work is licensed_ under a permissive MIT License.
 I acknowledge important contributions from Benoît Bovy,
