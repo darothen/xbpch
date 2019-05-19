@@ -27,6 +27,7 @@ from . version import __version__ as ver
 def open_bpchdataset(filename, fields=[], categories=[],
                      tracerinfo_file='tracerinfo.dat',
                      diaginfo_file='diaginfo.dat',
+                     legacy=False,
                      endian=">", decode_cf=True,
                      memmap=True, dask=True, return_store=False):
     """ Open a GEOS-Chem BPCH file output as an xarray Dataset.
@@ -40,6 +41,8 @@ def open_bpchdataset(filename, fields=[], categories=[],
         the metadata corresponding to each variable in the output dataset.
         If not provided, will look for them in the current directory or
         fall back on a generic set.
+    legacy : bool, optional
+        Flag indicating that this data was generated prior to GEOS-Chem v12.2.0
     fields : list, optional
         List of a subset of variable names to return. This can substantially
         improve read performance. Note that the field here is just the tracer
@@ -76,7 +79,7 @@ def open_bpchdataset(filename, fields=[], categories=[],
 
     store = BPCHDataStore(
         filename, fields=fields, categories=categories,
-        tracerinfo_file=tracerinfo_file,
+        tracerinfo_file=tracerinfo_file, legacy=legacy,
         diaginfo_file=diaginfo_file, endian=endian,
         use_mmap=memmap, dask_delayed=dask
     )
@@ -231,7 +234,7 @@ class BPCHDataStore(AbstractDataStore):
 
     def __init__(self, filename, fields=[], categories=[], fix_cf=False,
                  mode='r', endian='>',
-                 diaginfo_file='', tracerinfo_file='',
+                 diaginfo_file='', tracerinfo_file='', legacy=False,
                  use_mmap=False, dask_delayed=False):
 
         # Track the metadata accompanying this dataset.
@@ -266,6 +269,7 @@ class BPCHDataStore(AbstractDataStore):
         self._bpch = BPCHFile(self.filename, self.mode, self.endian,
                               tracerinfo_file=tracerinfo_file,
                               diaginfo_file=diaginfo_file,
+                              legacy=legacy,
                               eager=False, use_mmap=self._mmap,
                               dask_delayed=self._dask)
         self.fields = fields

@@ -100,7 +100,7 @@ class BPCHFile(object):
     """
 
     def __init__(self, filename, mode='rb', endian='>',
-                 diaginfo_file='', tracerinfo_file='', eager=False,
+                 diaginfo_file='', tracerinfo_file='', legacy=False, eager=False,
                  use_mmap=False, dask_delayed=False):
         """ Load a BPCHFile
 
@@ -116,6 +116,8 @@ class BPCHFile(object):
         {tracerinfo, diaginfo}_file : str
             Path to the tracerinfo.dat and diaginfo.dat files containing
             metadata pertaining to the output in the bpch file being read.
+        legacy : bool
+            Flag indicating that this data was generated prior to GEOS-Chem v12.2.0
         eager : bool
             Flag to immediately read variable data; if "False", then nothing
             will be read from the file and you'll need to do so manually
@@ -155,7 +157,7 @@ class BPCHFile(object):
 
         # Don't necessarily need to save diag/tracer_dict yet
         self.diaginfo_df, _ = get_diaginfo(self.diaginfo_file)
-        self.tracerinfo_df, _ = get_tracerinfo(self.tracerinfo_file)
+        self.tracerinfo_df, _ = get_tracerinfo(self.tracerinfo_file, legacy)
 
         # Container for bundles contained in the output file.
         self.var_data = {}
