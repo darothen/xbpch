@@ -8,7 +8,7 @@ import dask.array as da
 import numpy as np
 import os
 
-from xarray.core.pycompat import OrderedDict
+from collections import OrderedDict
 
 from . uff import FortranFile
 from . util import cf

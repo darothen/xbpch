@@ -5,7 +5,7 @@ grids.
 
 import numpy as np
 
-from xarray.core.pycompat import OrderedDict
+from collections import OrderedDict
 
 from .common import broadcast_1d_array
 from .util.gridspec import _get_model_info, prof_altitude

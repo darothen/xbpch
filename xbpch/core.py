@@ -12,7 +12,9 @@ import warnings
 
 import dask.array as da
 
-from xarray.core.pycompat import OrderedDict, basestring
+from collections import OrderedDict
+
+from xarray.core.pycompat import basestring
 from xarray.backends.common import AbstractDataStore
 from xarray.core.utils import Frozen
 
