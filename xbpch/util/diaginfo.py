@@ -26,14 +26,14 @@ _LEGACY_NAME_WIDTH = 8
 tracer_rec = diag_rec
 tracer_recs = [
     tracer_rec('name', 31, str, None, True, "Tracer name"),
-    tracer_rec("-0", 1, str, ' ', True, None),
+    # tracer_rec("-0", 1, str, ' ', True, None),
     tracer_rec('full_name', 30, str, None, True, "Full tracer name"),
     tracer_rec('molwt', 10, float, 1., True, "Molecular weight (kg/mole)"),
     tracer_rec('C', 3, int, 1, True, "# moles C/moles tracer for HCs"),
     tracer_rec('tracer', 9, int, None, True, "Tracer number"),
     tracer_rec('scale', 10, float, 1e9, True, "Standard scale factor to convert to"
                                               " given units"),
-    tracer_rec("-1", 1, str, ' ', True, None),
+    # tracer_rec("-1", 1, str, ' ', True, None),
     tracer_rec('unit', 40, str, 'ppbv', True, "Unit string"),
 ]
 
@@ -89,17 +89,21 @@ def get_tracerinfo(tracerinfo_file, legacy=False):
     widths = [rec.width for rec in tracer_recs]
     col_names = [rec.name for rec in tracer_recs]
     dtypes = [rec.type for rec in tracer_recs]
-    usecols = [name for name in col_names if not name.startswith('-')]
+    dtypes = {name: dtype for name, dtype in zip(col_names, dtypes)}
+    # usecols = [name for name in col_names if not name.startswith('-')]
 
     # This isn't a great kluge, but it's a simple way to handle the backwards-
     # incompatible change in the width specficiation of the "name" column in
     # `tracerinfo.dat`s generated with GC >= v.12.2.0
-    if legacy:
-        widths[0] = _LEGACY_NAME_WIDTH
+    # if legacy:
+    #     widths[0] = _LEGACY_NAME_WIDTH
 
-    tracer_df = pd.read_fwf(tracerinfo_file, widths=widths, names=col_names,
-                            dtypes=dtypes, comment="#", header=None,
-                            usecols=usecols)
+    # tracer_df = pd.read_fwf(tracerinfo_file, widths=widths, names=col_names,
+    #                         dtypes=dtypes, comment="#", header=None,
+    #                         usecols=usecols)
+
+    tracer_df = pd.read_csv(tracerinfo_file, names=col_names, sep=r'\s\s+?',
+                              comment="#", header=None, index_col=False)
 
     # Check an edge case related to a bug in GEOS-Chem v12.0.3 which 
     # erroneously dropped short/long tracer names in certain tracerinfo.dat outputs.
