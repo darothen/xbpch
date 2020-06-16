@@ -385,12 +385,14 @@ class BPCHDataStore(AbstractDataStore):
             # Process dimensions
             dims = ['time', 'lon', 'lat', ]
             dshape = var_attr['original_shape']
+            vert_fill = False
             if len(dshape) == 3:
                 # Process the vertical coordinate. A few things can happen here:
                 # 1) We have cell-centered values on the "Nlayer" grid; we can take these variables and map them to 'lev'
                 # 2) We have edge value on an "Nlayer" + 1 grid; we can take these and use them with 'lev_edge'
                 # 3) We have troposphere values on "Ntrop"; we can take these and use them with 'lev_trop', but we won't have coordinate information yet
                 # All other cases we do not handle yet; this includes the aircraft emissions and a few other things. Note that tracer sources do not have a vertical coord to worry about!
+                # SDE 2020-06-16: Partial fix has been introduced (see "vert_fill")
                 nlev = dshape[-1]
                 grid_nlev = self.ctm_info.Nlayers
                 grid_ntrop = self.ctm_info.Ntrop
@@ -401,6 +403,10 @@ class BPCHDataStore(AbstractDataStore):
                         dims.append('lev_edge')
                     elif nlev == grid_ntrop:
                         dims.append('lev_trop')
+                    elif nlev < grid_nlev:
+                        # Remaining levels will be filled with 0
+                        dims.append('lev')
+                        vert_fill = True
                     else:
                         continue
                 except AttributeError:
@@ -415,6 +421,18 @@ class BPCHDataStore(AbstractDataStore):
             # from the bpch file
             data = self._concat([v.data for v in var_data])
 
+            # Some data only extends up to an intermediate level, e.g. when
+            # extracting J-values or optical depths from a 72-layer standard
+            # chemistry simulation. The code below will (rather expensively)
+            # fill the missing data with zeros, although nan may be preferable
+            if vert_fill:
+                data_old = data.copy()
+                new_shape = list(data.shape)
+                new_shape[-1] = grid_nlev
+                data = np.zeros(new_shape)
+                data[...,:nlev] = data_old.copy()
+
+            
             # Is the variable time-invariant? If it is, kill the time dim.
             # Here, we mean it only as one sample in the dataset.
             if data.shape[0] == 1:
