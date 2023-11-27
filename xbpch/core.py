@@ -81,9 +81,6 @@ def open_bpchdataset(filename, fields=[], categories=[],
         use_mmap=memmap, dask_delayed=dask
     )
     ds = xr.Dataset.load_store(store)
-    # Record what the file object underlying the store which we culled this
-    # Dataset from is so that we can clean it up later
-    ds._file_obj = store._bpch
 
     # Handle CF corrections
     if decode_cf:
@@ -118,6 +115,15 @@ def open_bpchdataset(filename, fields=[], categories=[],
             .format(ts, ver, filename)
         ),
     ))
+
+    # # Record what the file object underlying the store which we culled this
+    # # Dataset from is so that we can clean it up later
+    # ds._file_obj = store._bpch
+    try:
+        # xarray 0.17 +
+        ds.set_close(store.close)
+    except AttributeError:
+        ds._file_obj = store._bpch
 
     # To immediately load the data from the BPCHDataProxy paylods, need
     # to execute ds.data_vars for some reason...
@@ -175,8 +181,10 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
         Additional arguments to pass to :py:func:`xbpch.open_bpchdataset`.
     
     """
-
-    from xarray.backends.api import _MultiFileCloser
+    try:
+        from xarray.backends.api import _MultiFileCloser
+    except ImportError:
+        pass
 
     # TODO: Include file locks?
 
@@ -195,15 +203,19 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
 
     datasets = [open_bpchdataset(filename, **kwargs)
                 for filename in paths]
-    bpch_objs = [ds._file_obj for ds in datasets]
 
     if preprocess is not None:
         datasets = [preprocess(ds) for ds in datasets]
 
     # Concatenate over time
-    combined = xr.auto_combine(datasets, compat=compat, concat_dim=concat_dim)
+    combined = xr.combine_nested(datasets, compat=compat, concat_dim=concat_dim)
 
-    combined._file_obj = _MultiFileCloser(bpch_objs)
+    try:
+        # xarray 0.17 +
+        combined.set_close(lambda : [ds.close() for ds in datasets])
+    except AttributeError:
+        combined._file_obj = _MultiFileCloser([ds._file_obj for ds in datasets])
+
     combined.attrs = datasets[0].attrs
     ts = get_timestamp()
     fns_str = " ".join(paths)
@@ -211,7 +223,6 @@ def open_mfbpchdataset(paths, concat_dim='time', compat='no_conflicts',
         "{}: Processed/loaded by xbpch-{} from {}"
         .format(ts, ver, fns_str)
     )
-
 
     return combined
 
